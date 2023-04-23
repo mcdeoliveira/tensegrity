@@ -36,7 +36,7 @@ class Structure:
             # setup member property as pandas dataframe
             hints = get_type_hints(Structure.MemberProperty)
             df = pd.DataFrame(data=data, columns=list(hints.keys())).astype(dtype=hints)
-            df.set_index('member_id')
+            df.set_index('member_id', inplace=True)
             return df
 
     member_defaults = {
@@ -45,7 +45,7 @@ class Structure:
             'edgecolor': (1, 0, 0)
         },
         'string': {
-            'facecolor': (0, 0, 0),
+            'facecolor': (1, 1, 1),
             'edgecolor': (0, 0, 0)
         }
     }
@@ -98,41 +98,47 @@ class Structure:
     def get_number_of_nodes(self) -> int:
         return self.nodes.shape[1]
 
-    def add_members(self, new_members: npt.ArrayLike,
-                    number_of_new_strings: Optional[int] = None,
-                    new_member_tags: Optional[Dict[str, npt.NDArray[np.uint64]]] = None):
+    def add_members(self, members: npt.ArrayLike,
+                    number_of_strings: Optional[int] = None,
+                    member_tags: Optional[Dict[str, npt.NDArray[np.uint64]]] = None):
 
         # convert to array
-        new_members = np.array(new_members, np.uint64)
+        members = np.array(members, np.uint64)
 
         # test dimensions
-        assert new_members.shape[0] == 2, 'members must be a 2 x m array'
+        assert members.shape[0] == 2, 'members must be a 2 x m array'
 
         # member tags
-        number_of_new_members = new_members.shape[1]
-        if new_member_tags is not None:
+        if number_of_strings is None and member_tags is None:
+            raise Exception('Either type or number of strings must be provided')
+
+        number_of_new_members = members.shape[1]
+        new_member_tags = {}
+        if number_of_strings is not None:
+            # number of strings given
+            assert number_of_strings <= number_of_new_members, \
+                'number of added strings must be less than number of added members'
+            number_of_new_bars = number_of_new_members - number_of_strings
+            new_member_tags = {
+                'string': np.arange(0, number_of_strings, dtype=np.uint64),
+                'bar': number_of_strings + np.arange(0, number_of_new_bars, dtype=np.uint64)
+            }
+
+        # if tags were given
+        if member_tags is not None:
             # make sure member tags are unique
-            for k, v in new_member_tags.items():
-                new_member_tags[k] = np.unique(v)
+            for k, v in member_tags.items():
+                member_tags[k] = np.unique(v)
                 assert np.amin(v) >= 0, \
                     'member tag index must be greater or equal than zero'
                 assert np.amax(v) < number_of_new_members, \
                     'member index must be less than number of members'
             # make sure bars and strings are mutually exclusive
-            assert 'bar' not in new_member_tags or 'string' not in new_member_tags or \
-                np.intersect1d(new_member_tags['bar'], new_member_tags['string'], assume_unique=True).size == 0, \
+            assert 'bar' not in member_tags or 'string' not in member_tags or \
+                   np.intersect1d(member_tags['bar'], member_tags['string'], assume_unique=True).size == 0, \
                 'bar and string tags must be mutually exclusive'
-        elif number_of_new_strings is not None:
-            # number of strings given
-            assert number_of_new_strings <= number_of_new_members, \
-                'number of added strings must be less than number of added members'
-            number_of_new_bars = number_of_new_members - number_of_new_strings
-            new_member_tags = {
-                'string': np.arange(0, number_of_new_strings, dtype=np.uint64),
-                'bar': number_of_new_strings + np.arange(0, number_of_new_bars, dtype=np.uint64)
-            }
-        else:
-            raise Exception('Either type or number of strings must be provided')
+            # update member_tags
+            new_member_tags.update(member_tags)
 
         # new member properties
         number_of_members = self.get_number_of_members()
@@ -143,17 +149,17 @@ class Structure:
                                                           **ChainMap(*[Structure.member_defaults[tag]
                                                                        for tag in tags_with_defaults
                                                                        if i in new_member_tags[tag]]))
-                                 for i in range(new_members.shape[1])]
+                                 for i in range(members.shape[1])]
 
         # make sure member index is valid
         number_of_nodes = self.get_number_of_nodes()
-        assert number_of_new_members == 0 or np.amin(new_members) >= 0, \
+        assert number_of_new_members == 0 or np.amin(members) >= 0, \
             'member index must be greater or equal than zero'
-        assert number_of_new_members == 0 or np.amax(new_members) < number_of_nodes, \
+        assert number_of_new_members == 0 or np.amax(members) < number_of_nodes, \
             'member index must be less than number of nodes'
 
         # add new members
-        self.members = np.hstack((self.members, new_members))
+        self.members = np.hstack((self.members, members))
         # add member tags
         for k, v in new_member_tags.items():
             self.member_tags[k] = np.hstack((self.member_tags[k], number_of_members + v)) \
@@ -161,7 +167,8 @@ class Structure:
 
         # add default member properties
         self.member_properties = pd.concat((self.member_properties,
-                                            Structure.MemberProperty.to_dataframe(new_member_properties)))
+                                            Structure.MemberProperty.to_dataframe(new_member_properties)),
+                                           ignore_index=True)
 
     def get_number_of_members(self) -> int:
         return self.members.shape[1]
@@ -172,7 +179,7 @@ class Structure:
     def has_member_tag(self, i: int, tag: str) -> bool:
         return tag in self.member_tags and i in self.member_tags[tag]
 
-    def get_elements_by_tags(self, tags: Sequence[str]) -> npt.NDArray[np.uint64]:
+    def get_members_by_tags(self, tags: Sequence[str]) -> npt.NDArray[np.uint64]:
         if len(tags) == 0:
             return np.zeros((0,))
         elif len(tags) == 1:
@@ -181,10 +188,30 @@ class Structure:
             return reduce(lambda a1, a2: np.intersect1d(a1, a2, assume_unique=True),
                           [v for k, v in self.member_tags.items() if k in tags])
 
-    def get_member_properties(self, index: Union[int, Sequence[int]], labels: List[str],
-                              orient: Literal['dict', 'list', 'series', 'split', 'tight', 'index', 'records']
-                              = 'index') -> dict[Hashable, Any]:
-        if isinstance(index, int):
-            return self.member_properties.loc[index, labels].to_dict()
-        else:
-            return self.member_properties.loc[index, labels].to_dict(orient)
+    def get_member_properties(self, index: Union[int, Sequence[int]], labels: List[str]) -> pd.DataFrame:
+        return self.member_properties.loc[index, labels]
+
+    def merge(self, s: 'Structure'):
+        # merge Structure s into current structure
+
+        # offset members in s by number_of_members
+        number_of_members = self.get_number_of_members()
+        number_of_nodes = self.get_number_of_nodes()
+
+        # merge nodes
+        self.nodes = np.hstack((self.nodes, s.nodes))
+
+        # merge members, offset by number of nodes
+        self.members = np.hstack((self.members, number_of_nodes + s.members))
+
+        # merge member tags
+        for k, v in s.member_tags.items():
+            if k in self.member_tags:
+                # append
+                self.member_tags[k] = np.hstack((self.member_tags[k], number_of_members + v))
+            else:
+                # add
+                self.member_tags[k] = number_of_members + v
+
+        # merge member properties
+        self.member_properties = pd.concat((self.member_properties, s.member_properties), ignore_index=True)

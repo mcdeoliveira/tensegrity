@@ -25,8 +25,8 @@ class Plotter:
         return x_grid, y_grid, z_grid
 
     @staticmethod
-    def cylinder(node1: npt.NDArray, node2: npt.NDArray, volume: float = 0., radius: float = 0.01, n: int = 10) \
-            -> Tuple[npt.NDArray, npt.NDArray, npt.NDArray]:
+    def cylinder(node1: npt.NDArray, node2: npt.NDArray,
+                 volume: float = 0., radius: float = 0.01, n: int = 10) -> Tuple[npt.NDArray, npt.NDArray, npt.NDArray]:
 
         # rod vector length
         rod = node2 - node1
@@ -73,15 +73,15 @@ class MatplotlibPlotter(Plotter):
         'plot_nodes': True,
         'plot_members': True,
         'node_marker': 'o',
-        'node_markersize': 10,
+        'node_markersize': 4,
         'node_linewidth': 2,
-        'node_linestyle': '-',
+        'node_linestyle': 'none',
         'node_facecolor': (0, 0, 0),
         'node_edgecolor': (1, 1, 1)
     }
 
     @staticmethod
-    def plot_element(ax: plt.Axes, nodes: npt.NDArray[np.float_], i: int, j: int, **kwargs):
+    def plot_line(ax: plt.Axes, nodes: npt.NDArray[np.float_], i: int, j: int, **kwargs):
         # draw lines
         x = np.hstack((nodes[0, i], nodes[0, j]))
         y = np.hstack((nodes[1, i], nodes[1, j]))
@@ -98,10 +98,13 @@ class MatplotlibPlotter(Plotter):
 
         ax.plot_surface(x, y, z, **kwargs)
 
-    def plot(self, **kwargs) -> plt.Axes:
+    def __init__(self, s: Structure):
+        super().__init__(s)
 
-        # create axis
-        ax = kwargs.get('ax', plt.figure().add_subplot(projection='3d'))
+        # initialize figure
+        self.fig, self.ax = plt.subplots(subplot_kw={"projection": "3d"})
+
+    def plot(self, **kwargs) -> Tuple[plt.Figure, plt.Axes]:
 
         # process options
         defaults = MatplotlibPlotter.defaults.copy()
@@ -110,7 +113,7 @@ class MatplotlibPlotter(Plotter):
         # plot nodes
         nodes = self.s.nodes
         if defaults['plot_nodes']:
-            ax.plot(nodes[0, :], nodes[1, :], nodes[2, :],
+            self.ax.plot(nodes[0, :], nodes[1, :], nodes[2, :],
                     defaults['node_marker'],
                     markersize=defaults['node_markersize'],
                     linewidth=defaults['node_linewidth'],
@@ -124,13 +127,13 @@ class MatplotlibPlotter(Plotter):
             for j in range(self.s.get_number_of_members()):
                 if self.s.has_member_tag(j, 'string'):
                     # plot strings as lines
-                    kwargs = self.s.get_member_properties(j, ['facecolor', 'linewidth'])
+                    kwargs = self.s.get_member_properties(j, ['facecolor', 'linewidth']).to_dict()
                     kwargs['color'] = kwargs['facecolor']
                     del kwargs['facecolor']
-                    MatplotlibPlotter.plot_element(ax, nodes, members[0, j], members[1, j], **kwargs)
+                    MatplotlibPlotter.plot_line(self.ax, nodes, members[0, j], members[1, j], **kwargs)
                 else:
                     # plot others as solid elements
-                    kwargs = self.s.get_member_properties(j, ['facecolor', 'edgecolor', 'volume'])
-                    MatplotlibPlotter.plot_solid_cylinder(ax, nodes, members[0, j], members[1, j], **kwargs)
+                    kwargs = self.s.get_member_properties(j, ['facecolor', 'edgecolor', 'volume']).to_dict()
+                    MatplotlibPlotter.plot_solid_cylinder(self.ax, nodes, members[0, j], members[1, j], **kwargs)
 
-        return ax
+        return self.fig, self.ax
