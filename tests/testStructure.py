@@ -71,6 +71,7 @@ class TestStructure(unittest.TestCase):
         self.assertEqual(s.get_number_of_members(), 3)
         self.assertEqual(len(s.member_properties), 3)
 
+        Structure.member_defaults['vertical'] = {'linewidth': 1001, 'volume': 2}
         s = Structure(nodes, members,
                       member_tags={
                           'bar': np.arange(1, 3, dtype=np.uint64),
@@ -93,9 +94,14 @@ class TestStructure(unittest.TestCase):
         self.assertTrue(s.has_member_tag(2, 'bar'))
         self.assertTrue(s.has_member_tag(2, 'vertical'))
         self.assertFalse(s.has_member_tag(1, 'vertical'))
-        np.testing.assert_array_equal(s.get_element_by_tags(['bar']), [1, 2])
-        np.testing.assert_array_equal(s.get_element_by_tags(['bar', 'vertical']), [2])
+        np.testing.assert_array_equal(s.get_elements_by_tags(['bar']), [1, 2])
+        np.testing.assert_array_equal(s.get_elements_by_tags(['bar', 'vertical']), [2])
         self.assertEqual(len(s.member_properties), 3)
+        self.assertEqual(s.member_properties.loc[1, 'linewidth'], 2)
+        self.assertEqual(s.member_properties.loc[2, 'linewidth'], 1001)
+        self.assertEqual(s.get_member_properties([1, 2], ['volume', 'mass']),
+                         {1: {'volume': 0., 'mass': 1.}, 2: {'volume': 2., 'mass': 1.}})
+        self.assertEqual(s.get_member_properties(2, ['volume', 'mass']), {'volume': 2., 'mass': 1.})
 
 
 if __name__ == '__main__':

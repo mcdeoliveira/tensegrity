@@ -1,6 +1,8 @@
+import operator
 from dataclasses import dataclass, field
 from functools import reduce
-from typing import Optional, Dict, get_type_hints, Union, Tuple
+from typing import Optional, Dict, get_type_hints, Union, Tuple, Any, List, Hashable, Literal, Sequence
+from collections import ChainMap
 
 import numpy as np
 import numpy.typing as npt
@@ -36,6 +38,17 @@ class Structure:
             df = pd.DataFrame(data=data, columns=list(hints.keys())).astype(dtype=hints)
             df.set_index('member_id')
             return df
+
+    member_defaults = {
+        'bar': {
+            'facecolor': (1, 0, 0),
+            'edgecolor': (1, 0, 0)
+        },
+        'string': {
+            'facecolor': (0, 0, 0),
+            'edgecolor': (0, 0, 0)
+        }
+    }
 
     def __init__(self,
                  nodes: npt.ArrayLike = np.zeros((3, 0), np.float_),
@@ -123,7 +136,14 @@ class Structure:
 
         # new member properties
         number_of_members = self.get_number_of_members()
-        new_member_properties = [Structure.MemberProperty(i + number_of_members) for i in range(new_members.shape[1])]
+        # determine tags that have defaults
+        tags_with_defaults = list(set(new_member_tags.keys()) & set(Structure.member_defaults.keys()))
+        # apply defaults
+        new_member_properties = [Structure.MemberProperty(i + number_of_members,
+                                                          **ChainMap(*[Structure.member_defaults[tag]
+                                                                       for tag in tags_with_defaults
+                                                                       if i in new_member_tags[tag]]))
+                                 for i in range(new_members.shape[1])]
 
         # make sure member index is valid
         number_of_nodes = self.get_number_of_nodes()
@@ -146,13 +166,13 @@ class Structure:
     def get_number_of_members(self) -> int:
         return self.members.shape[1]
 
-    def get_member_tags(self, i: int):
+    def get_member_tags(self, i: int) -> List[str]:
         return [k for k, v in self.member_tags.items() if i in v]
 
-    def has_member_tag(self, i: int, tag: str):
+    def has_member_tag(self, i: int, tag: str) -> bool:
         return tag in self.member_tags and i in self.member_tags[tag]
 
-    def get_element_by_tags(self, tags: Tuple[str]):
+    def get_elements_by_tags(self, tags: Sequence[str]) -> npt.NDArray[np.uint64]:
         if len(tags) == 0:
             return np.zeros((0,))
         elif len(tags) == 1:
@@ -161,3 +181,10 @@ class Structure:
             return reduce(lambda a1, a2: np.intersect1d(a1, a2, assume_unique=True),
                           [v for k, v in self.member_tags.items() if k in tags])
 
+    def get_member_properties(self, index: Union[int, Sequence[int]], labels: List[str],
+                              orient: Literal['dict', 'list', 'series', 'split', 'tight', 'index', 'records']
+                              = 'index') -> dict[Hashable, Any]:
+        if isinstance(index, int):
+            return self.member_properties.loc[index, labels].to_dict()
+        else:
+            return self.member_properties.loc[index, labels].to_dict(orient)

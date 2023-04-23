@@ -75,6 +75,7 @@ class MatplotlibPlotter(Plotter):
         'node_marker': 'o',
         'node_markersize': 10,
         'node_linewidth': 2,
+        'node_linestyle': '-',
         'node_facecolor': (0, 0, 0),
         'node_edgecolor': (1, 1, 1)
     }
@@ -121,12 +122,15 @@ class MatplotlibPlotter(Plotter):
         members = self.s.members
         if defaults['plot_members']:
             for j in range(self.s.get_number_of_members()):
-                if self.s.has_member_tag(j, 'bar'):
-                    pass
-                elif self.s.has_member_tag(j, 'string'):
-                    pass
-                facecolor, edgecolor, volume = self.s.member_properties.loc[j, ['facecolor', 'edgecolor', 'volume']]
-                MatplotlibPlotter.plot_solid_cylinder(ax, nodes, members[0, j], members[1, j], volume,
-                                                      facecolor=facecolor, edgecolor=edgecolor)
+                if self.s.has_member_tag(j, 'string'):
+                    # plot strings as lines
+                    kwargs = self.s.get_member_properties(j, ['facecolor', 'linewidth'])
+                    kwargs['color'] = kwargs['facecolor']
+                    del kwargs['facecolor']
+                    MatplotlibPlotter.plot_element(ax, nodes, members[0, j], members[1, j], **kwargs)
+                else:
+                    # plot others as solid elements
+                    kwargs = self.s.get_member_properties(j, ['facecolor', 'edgecolor', 'volume'])
+                    MatplotlibPlotter.plot_solid_cylinder(ax, nodes, members[0, j], members[1, j], **kwargs)
 
         return ax
