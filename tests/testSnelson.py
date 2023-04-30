@@ -1,40 +1,47 @@
+import itertools
 import unittest
-
+from parameterized import parameterized
 import numpy as np
 
-from tensegrity.snelson import Snelson
+from tensegrity.prism import Prism
 
 
 class TestSnelson(unittest.TestCase):
 
-    def test_constructor(self):
+    @parameterized.expand(itertools.product([3, 4, 6, 12], ['lp', 'analytic']))
+    def test_regular_prism(self, p, method='analytic'):
+        s = Prism(p, equilibrium_method=method)
+        self.assertEqual(s.get_number_of_members(), 4*p)
+        self.assertEqual(s.get_number_of_nodes(), 2*p)
+        self.assertEqual(set(s.member_tags.keys()), {'bar', 'string', 'vertical', 'top', 'bottom'})
 
-        # empty structure
-        s = Snelson()
-        self.assertEqual(s.label, None)
-        self.assertEqual(s.nodes.dtype, np.float_)
-        self.assertEqual(s.members.dtype, np.uint64)
-        # np.testing.assert_array_equal(s.nodes, nodes)
-        # np.testing.assert_array_equal(s.members, members)
-        # np.testing.assert_array_equal(s.member_tags['bar'], np.arange(1, 3, dtype=np.uint64))
-        # np.testing.assert_array_equal(s.member_tags['string'], np.arange(0, 1, dtype=np.uint64))
-        # np.testing.assert_array_equal(s.member_tags['vertical'], np.arange(2, 3, dtype=np.uint64))
-        # self.assertEqual(s.get_number_of_nodes(), 3)
-        # self.assertEqual(s.get_number_of_members(), 3)
-        # self.assertEqual(s.get_member_tags(0), ['string'])
-        # self.assertEqual(s.get_member_tags(1), ['bar'])
-        # self.assertEqual(s.get_member_tags(2), ['bar', 'vertical'])
-        # self.assertTrue(s.has_member_tag(2, 'bar'))
-        # self.assertTrue(s.has_member_tag(2, 'vertical'))
-        # self.assertFalse(s.has_member_tag(1, 'vertical'))
-        # np.testing.assert_array_equal(s.get_members_by_tags(['bar']), [1, 2])
-        # np.testing.assert_array_equal(s.get_members_by_tags(['bar', 'vertical']), [2])
-        # self.assertEqual(len(s.member_properties), 3)
-        # self.assertEqual(s.member_properties.loc[1, 'linewidth'], 2)
-        # self.assertEqual(s.member_properties.loc[2, 'linewidth'], 1001)
-        # self.assertEqual(s.get_member_properties([1, 2], ['volume', 'mass']).to_dict('index'),
-        #                  {1: {'volume': 0., 'mass': 1.}, 2: {'volume': 2., 'mass': 1.}})
-        # self.assertEqual(s.get_member_properties(2, ['volume', 'mass']).to_dict(), {'volume': 2., 'mass': 1.})
+        rho = 1
+        alpha = np.pi/2-np.pi/p
+        lmbda = np.hstack((
+            rho * np.cos(np.pi/p) / np.cos(alpha - np.pi/p) * np.ones((p,)),
+            (1/rho) * np.cos(np.pi / p) / np.cos(alpha - np.pi/p) * np.ones((p,)),
+            np.ones((p,)),
+            -np.ones((p,))
+        ))
+        np.testing.assert_allclose(s.member_properties['lmbda'], lmbda)
+
+    @parameterized.expand(itertools.product([3, 4, 6, 12], [0, .25, .5, 1], ['lp', 'analytic'], [1, 0.8, 1.2]))
+    def test_diagonal_prism(self, p, lb=0, equilibrium_method='analytic', rho=1):
+        alpha = (1-lb) * (np.pi/2 - np.pi/p) + lb * np.pi/2
+        s = Prism(p, top_radius=rho, bottom_radius=1, alpha=alpha, diagonal=True,
+                  equilibrium_method=equilibrium_method)
+        self.assertEqual(s.get_number_of_members(), 5 * p)
+        self.assertEqual(s.get_number_of_nodes(), 2 * p)
+        self.assertEqual(set(s.member_tags.keys()), {'bar', 'string', 'vertical', 'top', 'bottom', 'diagonal'})
+
+        lmbda = np.hstack((
+            rho * np.cos(np.pi / p) / np.cos(alpha - np.pi / p) * np.ones((p,)),
+            (1 / rho) * np.cos(np.pi / p) / np.cos(alpha - np.pi / p) * np.ones((p,)),
+            2 * np.cos(alpha) * np.cos(np.pi / p) / np.cos(alpha - np.pi / p) * np.ones((p,)),
+            -np.cos(alpha + np.pi / p) / np.cos(alpha - np.pi / p) * np.ones((p,)),
+            -np.ones((p,))
+        ))
+        np.testing.assert_allclose(s.member_properties['lmbda'], lmbda, atol=1e-6, rtol=0)
 
 
 if __name__ == '__main__':

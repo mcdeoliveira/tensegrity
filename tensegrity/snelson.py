@@ -5,9 +5,6 @@ from .structure import Structure
 class Snelson(Structure):
 
     @staticmethod
-    def rotation_2d(phi: float):
-        return np.array([[np.cos(phi), -np.sin(phi)], [np.sin(phi), np.cos(phi)]])
-
     def __init__(self, height: float = 1, radius: float = 1, alpha: float = np.pi/6, label: str = None):
         # height
         # radius
@@ -57,21 +54,23 @@ class Snelson(Structure):
 
         # string tags
         member_tags = {
-            'bottom': np.hstack((np.arange(6), 18 + np.arange(3))),     # [1:6 19:21]
-            'top': np.hstack((6 + np.arange(6), 21 + np.arange(3))),    # [7:12, 22:24]
+            'bottom': np.hstack((np.arange(6), 18 + np.arange(3))),      # [1:6 19:21]
+            'top': np.hstack((6 + np.arange(6), 21 + np.arange(3))),     # [7:12, 22:24]
             'long': np.hstack((np.arange(3), 6 + np.arange(3))),         # [1: 3, 7: 9];
             'short': np.hstack((3 + np.arange(3), 9 + np.arange(3))),    # [4: 6, 10: 12];
-            'vertical': 12 + np.arange(3),                              # [13: 15];
-            'diagonal': 15 + np.arange(3),                              # [16: 18];
+            'vertical': 12 + np.arange(3),                               # [13: 15];
+            'diagonal': 15 + np.arange(3),                               # [16: 18];
             'thick': np.hstack((12 + np.arange(6), 24 + np.arange(9))),  # [13: 18, 25: 33];
-            'reach': 24 + np.arange(9),                                 # [25: 33];
-            'string2string': 27 + np.arange(6),                         # [28: 33];
-            'overlap': 18 + np.arange(6)                                # [19: 24]
+            'reach': 24 + np.arange(9),                                  # [25: 33];
+            'string2string': 27 + np.arange(6),                          # [28: 33];
+            'overlap': 18 + np.arange(6)                                 # [19: 24]
         }
 
         # call super
         super().__init__(nodes=nodes, members=members, number_of_strings=number_of_strings,
                          member_tags=member_tags, label=label)
+
+        # self.equilibrium()
 
         # barDiam = 4e-3
         # stringDiam = 2e-3

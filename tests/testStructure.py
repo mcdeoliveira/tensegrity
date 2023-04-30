@@ -103,7 +103,7 @@ class TestStructure(unittest.TestCase):
                          {1: {'volume': 0., 'mass': 1.}, 2: {'volume': 2., 'mass': 1.}})
         self.assertEqual(s.get_member_properties(2, ['volume', 'mass']).to_dict(), {'volume': 2., 'mass': 1.})
 
-    def testAddMembers(self):
+    def testAddMembersAndAddNodes(self):
 
         nodes1 = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
         members1 = np.array([[0, 1, 2], [1, 2, 0]])
@@ -179,6 +179,22 @@ class TestStructure(unittest.TestCase):
         np.testing.assert_array_equal(s2.members, [[0, 2, 3, 4], [1, 3, 4, 2]])
         np.testing.assert_array_equal(s2.nodes, [[1, 0, 1, 0, 0], [1, 1, 0, 1, 0], [0, 1, 0, 0, 1]])
         np.testing.assert_array_equal(s2.member_properties.index, np.arange(4))
+
+    def test_length_and_com(self):
+
+        nodes1 = np.array([[1, 0, 0, 0], [0, 1, 0, 1], [0, 0, 2, 1]])
+        members1 = np.array([[0, 1, 2, 3], [1, 2, 0, 0]])
+        s = Structure(nodes1, members1, number_of_strings=2)
+
+        np.testing.assert_array_equal(s.get_member_length(),
+                                      [np.linalg.norm(nodes1[:, 1]-nodes1[:, 0]),
+                                       np.linalg.norm(nodes1[:, 2]-nodes1[:, 1]),
+                                       np.linalg.norm(nodes1[:, 0]-nodes1[:, 2]),
+                                       np.linalg.norm(nodes1[:, 3]-nodes1[:, 0])])
+
+        np.testing.assert_array_equal(s.get_center_of_mass(),
+                                      (nodes1[:, 1] + nodes1[:, 0] + nodes1[:, 2] + nodes1[:, 1] +
+                                       nodes1[:, 0] + nodes1[:, 2] + nodes1[:, 3] + nodes1[:, 0])/8)
 
 
 if __name__ == '__main__':

@@ -1,12 +1,13 @@
-import operator
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from functools import reduce
-from typing import Optional, Dict, get_type_hints, Union, Tuple, Any, List, Hashable, Literal, Sequence
+from typing import Optional, Dict, get_type_hints, Union, List, Sequence
 from collections import ChainMap
 
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
+
+from tensegrity import optim
 
 
 class Structure:
@@ -215,3 +216,128 @@ class Structure:
 
         # merge member properties
         self.member_properties = pd.concat((self.member_properties, s.member_properties), ignore_index=True)
+
+    def equilibrium(self, b: Optional[npt.ArrayLike] = None, lambda_bar: float = 1,
+                    equalities: Optional[list[npt.ArrayLike]] = None,
+                    epsilon: float = 1e-7):
+        # Solve the force equilibrium equation
+        #
+        #   A x = b
+        #
+        # in which:
+        #
+        #    A: in a matrix representing the element vectors
+        #    b: is the vector of external forces
+        #    x: are the force coefficients
+        #
+        # If the ith element is a string then x >= 0
+        # If no external force is given then the sum of the bar force coefficients equals lambda_bar
+        # All elements in the rows of equalities are set equal
+
+        nodes = self.nodes
+        members = self.members
+        number_of_nodes = self.get_number_of_nodes()
+        number_of_strings = len(self.member_tags.get('string', []))
+        number_of_bars = len(self.member_tags.get('bar', []))
+        number_of_members = number_of_strings + number_of_bars
+
+        assert number_of_members == number_of_bars + number_of_strings, \
+            'number of members is not equal to the sum of number of bars and strings'
+
+        # dimensions
+        n = number_of_members
+
+        # member vectors
+        M = nodes[:, members[1, :]] - nodes[:, members[0, :]]
+
+        # coefficient matrix
+        Aeq = np.zeros((3 * number_of_nodes, number_of_members))
+
+        # string coefficient
+        if number_of_strings:
+            for i in self.member_tags['string']:
+
+                ii = 3 * int(members[0, i])
+                Aeq[ii:ii+3, i] = M[:, i]
+
+                jj = 3 * int(members[1, i])
+                Aeq[jj:jj+3, i] = -M[:, i]
+
+        # bar coefficient
+        if number_of_bars:
+            for i in self.member_tags['bar']:
+
+                ii = 3 * int(members[0, i])
+                Aeq[ii:ii+3, i] = -M[:, i]
+
+                jj = 3 * int(members[1, i])
+                Aeq[jj:jj+3, i] = M[:, i]
+
+        A = Aeq
+        m = 3 * number_of_nodes
+
+        # external forces
+        if b is None:
+            A = np.vstack((A, np.ones((1, number_of_members))))
+            blo = bup = np.hstack((np.zeros((3 * number_of_nodes,)), 1))
+        else:
+            beq = np.array(b)
+            assert np.all(beq.shape == [3, number_of_nodes]), 'b must be a 3 x n matrix'
+            blo = bup = beq.flatten(order='F')
+
+        # For equilibrium: Aeq x = beq
+
+        # impose equalities
+        # indices in each row are set to be equal
+        if equalities is not None:
+            number_of_constraints = sum(map(len, equalities)) - len(equalities)
+            Aeq = np.zeros((number_of_constraints, number_of_members))
+            beq = np.zeros((number_of_constraints, ))
+            ii = 0
+            for eqs in equalities:
+                nn = len(eqs)
+                for jj in range(1, nn):
+                    Aeq[ii+jj-1, eqs[0]] = 1
+                    Aeq[ii+jj-1, eqs[jj]] = -1
+                ii += nn
+            A = np.vstack((A, Aeq))
+            blo = bup = np.hstack((blo, beq))
+
+        # enforce strings have positive force coefficients
+        # when there are no external forces set to one to avoid nontrivial solution
+        xup = None
+        if number_of_strings:
+            xlo = np.full((number_of_members, ), 0)
+            xlo[self.member_tags['string']] = 0
+        else:
+            xlo = None
+
+        # cost function
+        c = np.ones((number_of_members,))
+
+        # solve lp
+        cost, gamma, status = optim.lp(n, m, c, A, blo, bup, xlo, xup)
+
+        # flip sign for bars
+        lmbda = gamma
+        if number_of_bars:
+            lmbda[self.member_tags['bar']] *= -1
+
+            if b is None:
+                # scale solution for bars
+                scale = -np.sum(lmbda[self.member_tags['bar']]) / number_of_bars
+                lmbda *= np.abs(lambda_bar) / scale
+
+        # assign lambda
+        self.member_properties['lmbda'] = lmbda
+
+    def get_member_length(self):
+        return np.linalg.norm(self.nodes[:, self.members[1, :]] - self.nodes[:, self.members[0, :]], axis=0)
+
+    def get_center_of_mass(self):
+        # Computes the center of mass
+        mass = self.member_properties['mass']
+        return np.sum(mass.values * (self.nodes[:, self.members[0, :]] + self.nodes[:, self.members[1, :]])/2, axis=1) \
+            / np.sum(mass)
+
+
