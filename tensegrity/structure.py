@@ -1,3 +1,4 @@
+import warnings
 from dataclasses import dataclass
 from functools import reduce
 from typing import Optional, Dict, get_type_hints, Union, List, Sequence
@@ -6,8 +7,10 @@ from collections import ChainMap
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
+import scipy
 
 from tensegrity import optim
+from tensegrity.utils import rotation_3d
 
 
 class Structure:
@@ -98,6 +101,35 @@ class Structure:
 
     def get_number_of_nodes(self) -> int:
         return self.nodes.shape[1]
+
+    def translate(self, v: npt.NDArray):
+        assert v.shape == (3,), 'v must be a three dimensional vector'
+        self.nodes += v.reshape((3, 1))
+
+    def rotate(self, v: npt.NDArray):
+        assert v.shape == (3,), 'v must be a three dimensional vector'
+        rotation = scipy.spatial.transform.Rotation.from_rotvec(v)
+        self.nodes = rotation.apply(self.nodes.transpose()).transpose()
+
+    def remove_nodes(self, nodes_to_be_deleted: npt.ArrayLike):
+        # sort node index
+        nodes_to_be_deleted = np.unique(nodes_to_be_deleted)
+        # calculate nodes that are in use
+        used_nodes = np.unique(self.members)
+        # find unused nodes
+        unused_nodes_to_be_deleted = np.setdiff1d(nodes_to_be_deleted, used_nodes, assume_unique=True)
+        # warn if different
+        number_of_used_nodes = len(nodes_to_be_deleted) - len(unused_nodes_to_be_deleted)
+        if number_of_used_nodes:
+            warnings.warn(f'{number_of_used_nodes} nodes are still in use and were not deleted')
+        # create new node map
+        node_index = np.delete(np.arange(self.get_number_of_nodes()), unused_nodes_to_be_deleted)
+        new_node_map = np.zeros((self.get_number_of_nodes(),), dtype=np.int_)
+        new_node_map[node_index] = np.arange(self.get_number_of_nodes() - len(unused_nodes_to_be_deleted))
+        # remove nodes
+        self.nodes = np.delete(self.nodes, unused_nodes_to_be_deleted, axis=1)
+        # apply new node map to members
+        self.members = new_node_map[self.members]
 
     def add_members(self, members: npt.ArrayLike,
                     number_of_strings: Optional[int] = None,
@@ -191,6 +223,15 @@ class Structure:
 
     def get_member_properties(self, index: Union[int, Sequence[int]], labels: List[str]) -> pd.DataFrame:
         return self.member_properties.loc[index, labels]
+
+    def get_member_length(self):
+        return np.linalg.norm(self.nodes[:, self.members[1, :]] - self.nodes[:, self.members[0, :]], axis=0)
+
+    def get_center_of_mass(self):
+        # Computes the center of mass
+        mass = self.member_properties['mass'].values
+        return np.sum(mass * (self.nodes[:, self.members[0, :]] + self.nodes[:, self.members[1, :]])/2, axis=1) \
+            / np.sum(mass)
 
     def merge(self, s: 'Structure'):
         # merge Structure s into current structure
@@ -331,13 +372,5 @@ class Structure:
         # assign lambda
         self.member_properties['lmbda'] = lmbda
 
-    def get_member_length(self):
-        return np.linalg.norm(self.nodes[:, self.members[1, :]] - self.nodes[:, self.members[0, :]], axis=0)
-
-    def get_center_of_mass(self):
-        # Computes the center of mass
-        mass = self.member_properties['mass']
-        return np.sum(mass.values * (self.nodes[:, self.members[0, :]] + self.nodes[:, self.members[1, :]])/2, axis=1) \
-            / np.sum(mass)
 
 

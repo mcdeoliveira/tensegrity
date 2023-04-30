@@ -1,7 +1,7 @@
 import unittest
 
 import numpy as np
-import pandas as pd
+import scipy
 
 from tensegrity.structure import Structure
 
@@ -180,21 +180,65 @@ class TestStructure(unittest.TestCase):
         np.testing.assert_array_equal(s2.nodes, [[1, 0, 1, 0, 0], [1, 1, 0, 1, 0], [0, 1, 0, 0, 1]])
         np.testing.assert_array_equal(s2.member_properties.index, np.arange(4))
 
-    def test_length_and_com(self):
+    def test_length_and_com_translate(self):
 
         nodes1 = np.array([[1, 0, 0, 0], [0, 1, 0, 1], [0, 0, 2, 1]])
         members1 = np.array([[0, 1, 2, 3], [1, 2, 0, 0]])
         s = Structure(nodes1, members1, number_of_strings=2)
 
+        # test get member length
         np.testing.assert_array_equal(s.get_member_length(),
                                       [np.linalg.norm(nodes1[:, 1]-nodes1[:, 0]),
                                        np.linalg.norm(nodes1[:, 2]-nodes1[:, 1]),
                                        np.linalg.norm(nodes1[:, 0]-nodes1[:, 2]),
                                        np.linalg.norm(nodes1[:, 3]-nodes1[:, 0])])
 
+        # test center of mass
         np.testing.assert_array_equal(s.get_center_of_mass(),
                                       (nodes1[:, 1] + nodes1[:, 0] + nodes1[:, 2] + nodes1[:, 1] +
                                        nodes1[:, 0] + nodes1[:, 2] + nodes1[:, 3] + nodes1[:, 0])/8)
+
+    def test_rotate(self):
+
+        nodes1 = np.array([[1, 0, 0, 0], [0, 1, 0, 1], [0, 0, 2, 1]])
+        members1 = np.array([[0, 1, 2, 3], [1, 2, 0, 0]])
+        s = Structure(nodes1, members1, number_of_strings=2)
+
+        v = np.array([1, 1, 1])
+        s.rotate(v)
+        R = scipy.spatial.transform.Rotation.from_rotvec(v)
+        np.testing.assert_array_equal(s.nodes, R.apply(nodes1.transpose()).transpose())
+
+    def test_remove_nodes(self):
+
+        nodes1 = np.array([[1, 0, 0, 0], [0, 1, 0, 1], [0, 0, 2, 1]])
+        members1 = np.array([[0, 1, 2], [1, 2, 0]])
+        s = Structure(nodes1, members1, number_of_strings=2)
+
+        s.remove_nodes([3])
+        np.testing.assert_array_equal(s.nodes, nodes1[:, :3])
+        np.testing.assert_array_equal(s.members, members1)
+
+        members2 = np.array([[0, 1, 3], [1, 3, 0]])
+        s = Structure(nodes1, members2, number_of_strings=2)
+
+        s.remove_nodes([2])
+        np.testing.assert_array_equal(s.nodes, nodes1[:, [0, 1, 3]])
+        np.testing.assert_array_equal(s.members, members1)
+
+        members3 = np.array([[0, 3], [3, 0]])
+        s = Structure(nodes1, members3, number_of_strings=2)
+
+        s.remove_nodes([1, 2])
+        np.testing.assert_array_equal(s.nodes, nodes1[:, [0, 3]])
+        np.testing.assert_array_equal(s.members, np.array([[0, 1], [1, 0]]))
+
+        members4 = np.array([[1, 3], [3, 1]])
+        s = Structure(nodes1, members4, number_of_strings=2)
+
+        s.remove_nodes([0, 2])
+        np.testing.assert_array_equal(s.nodes, nodes1[:, [1, 3]])
+        np.testing.assert_array_equal(s.members, np.array([[0, 1], [1, 0]]))
 
 
 if __name__ == '__main__':
