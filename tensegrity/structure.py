@@ -10,15 +10,12 @@ import pandas as pd
 import scipy
 
 from tensegrity import optim
-from tensegrity.utils import rotation_3d
 
 
 class Structure:
 
     @dataclass
     class MemberProperty:
-        # index
-        member_id: int
         # columns
         lmbda: float = 0.
         force: float = 0.
@@ -39,9 +36,7 @@ class Structure:
         def to_dataframe(data: Union[list, tuple] = tuple()) -> pd.DataFrame:
             # setup member property as pandas dataframe
             hints = get_type_hints(Structure.MemberProperty)
-            df = pd.DataFrame(data=data, columns=list(hints.keys())).astype(dtype=hints)
-            df.set_index('member_id', inplace=True)
-            return df
+            return pd.DataFrame(data=data, columns=list(hints.keys())).astype(dtype=hints)
 
     member_defaults = {
         'bar': {
@@ -193,8 +188,7 @@ class Structure:
         # determine tags that have defaults
         tags_with_defaults = list(set(new_member_tags.keys()) & set(Structure.member_defaults.keys()))
         # apply defaults
-        new_member_properties = [Structure.MemberProperty(i + number_of_members,
-                                                          **ChainMap(*[Structure.member_defaults[tag]
+        new_member_properties = [Structure.MemberProperty(**ChainMap(*[Structure.member_defaults[tag]
                                                                        for tag in tags_with_defaults
                                                                        if i in new_member_tags[tag]]))
                                  for i in range(members.shape[1])]
