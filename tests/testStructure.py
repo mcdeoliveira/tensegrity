@@ -215,12 +215,19 @@ class TestStructure(unittest.TestCase):
         members1 = np.array([[0, 1, 2], [1, 2, 0]])
         s = Structure(nodes1, members1, number_of_strings=2)
 
+        np.testing.assert_array_equal(s.get_unused_nodes(), [3])
+        self.assertTrue(s.has_unused_nodes())
+
         s.remove_nodes([3])
         np.testing.assert_array_equal(s.nodes, nodes1[:, :3])
         np.testing.assert_array_equal(s.members, members1)
+        self.assertFalse(s.has_unused_nodes())
 
         members2 = np.array([[0, 1, 3], [1, 3, 0]])
         s = Structure(nodes1, members2, number_of_strings=2)
+
+        np.testing.assert_array_equal(s.get_unused_nodes(), [2])
+        self.assertTrue(s.has_unused_nodes())
 
         s.remove_nodes([2])
         np.testing.assert_array_equal(s.nodes, nodes1[:, [0, 1, 3]])
@@ -229,16 +236,62 @@ class TestStructure(unittest.TestCase):
         members3 = np.array([[0, 3], [3, 0]])
         s = Structure(nodes1, members3, number_of_strings=2)
 
+        np.testing.assert_array_equal(s.get_unused_nodes(), [1, 2])
+        self.assertTrue(s.has_unused_nodes())
+
         s.remove_nodes([1, 2])
         np.testing.assert_array_equal(s.nodes, nodes1[:, [0, 3]])
         np.testing.assert_array_equal(s.members, np.array([[0, 1], [1, 0]]))
+        self.assertFalse(s.has_unused_nodes())
 
         members4 = np.array([[1, 3], [3, 1]])
         s = Structure(nodes1, members4, number_of_strings=2)
 
+        np.testing.assert_array_equal(s.get_unused_nodes(), [0, 2])
+        self.assertTrue(s.has_unused_nodes())
+
         s.remove_nodes([0, 2])
         np.testing.assert_array_equal(s.nodes, nodes1[:, [1, 3]])
         np.testing.assert_array_equal(s.members, np.array([[0, 1], [1, 0]]))
+        self.assertFalse(s.has_unused_nodes())
+
+        # has used nodes
+        s = Structure(nodes1, members1, number_of_strings=2)
+
+        np.testing.assert_array_equal(s.get_unused_nodes(), [3])
+        self.assertTrue(s.has_unused_nodes())
+
+        with self.assertWarns(Warning):
+            s.remove_nodes([2, 3])
+
+        np.testing.assert_array_equal(s.nodes, nodes1[:, :3])
+        np.testing.assert_array_equal(s.members, members1)
+        self.assertFalse(s.has_unused_nodes())
+
+        s = Structure(nodes1, members1, number_of_strings=2)
+
+        np.testing.assert_array_equal(s.get_unused_nodes(), [3])
+        self.assertTrue(s.has_unused_nodes())
+
+        with self.assertWarns(Warning):
+            s.remove_nodes([1, 2])
+
+        np.testing.assert_array_equal(s.nodes, nodes1)
+        np.testing.assert_array_equal(s.members, members1)
+        self.assertTrue(s.has_unused_nodes())
+
+        # Non as parameter
+
+        members3 = np.array([[0, 3], [3, 0]])
+        s = Structure(nodes1, members3, number_of_strings=2)
+
+        np.testing.assert_array_equal(s.get_unused_nodes(), [1, 2])
+        self.assertTrue(s.has_unused_nodes())
+
+        s.remove_nodes()
+        np.testing.assert_array_equal(s.nodes, nodes1[:, [0, 3]])
+        np.testing.assert_array_equal(s.members, np.array([[0, 1], [1, 0]]))
+        self.assertFalse(s.has_unused_nodes())
 
 
 if __name__ == '__main__':

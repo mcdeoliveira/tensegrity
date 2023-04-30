@@ -111,25 +111,40 @@ class Structure:
         rotation = scipy.spatial.transform.Rotation.from_rotvec(v)
         self.nodes = rotation.apply(self.nodes.transpose()).transpose()
 
-    def remove_nodes(self, nodes_to_be_deleted: npt.ArrayLike):
-        # sort node index
-        nodes_to_be_deleted = np.unique(nodes_to_be_deleted)
+    def get_unused_nodes(self):
         # calculate nodes that are in use
         used_nodes = np.unique(self.members)
-        # find unused nodes
-        unused_nodes_to_be_deleted = np.setdiff1d(nodes_to_be_deleted, used_nodes, assume_unique=True)
-        # warn if different
-        number_of_used_nodes = len(nodes_to_be_deleted) - len(unused_nodes_to_be_deleted)
-        if number_of_used_nodes:
-            warnings.warn(f'{number_of_used_nodes} nodes are still in use and were not deleted')
-        # create new node map
-        node_index = np.delete(np.arange(self.get_number_of_nodes()), unused_nodes_to_be_deleted)
-        new_node_map = np.zeros((self.get_number_of_nodes(),), dtype=np.int_)
-        new_node_map[node_index] = np.arange(self.get_number_of_nodes() - len(unused_nodes_to_be_deleted))
-        # remove nodes
-        self.nodes = np.delete(self.nodes, unused_nodes_to_be_deleted, axis=1)
-        # apply new node map to members
-        self.members = new_node_map[self.members]
+        # return unused nodes
+        return np.setdiff1d(np.arange(self.get_number_of_nodes()), used_nodes, assume_unique=True)
+
+    def has_unused_nodes(self) -> bool:
+        return len(self.get_unused_nodes()) > 0
+
+    def remove_nodes(self, nodes_to_be_deleted: Optional[npt.ArrayLike] = None):
+        if nodes_to_be_deleted is None:
+            # delete all unused nodes
+            unused_nodes_to_be_deleted = self.get_unused_nodes()
+        else:
+            # sort nodes to be deleted
+            nodes_to_be_deleted = np.unique(nodes_to_be_deleted)
+            # calculate nodes that are in use
+            used_nodes = np.unique(self.members)
+            # find unused nodes
+            unused_nodes_to_be_deleted = np.setdiff1d(nodes_to_be_deleted, used_nodes, assume_unique=True)
+            # warn if different
+            number_of_used_nodes = len(nodes_to_be_deleted) - len(unused_nodes_to_be_deleted)
+            if number_of_used_nodes:
+                warnings.warn(f'{number_of_used_nodes} nodes are still in use and were not deleted')
+        # delete if there are any unused nodes
+        if len(unused_nodes_to_be_deleted):
+            # create new node map
+            node_index = np.delete(np.arange(self.get_number_of_nodes()), unused_nodes_to_be_deleted)
+            new_node_map = np.zeros((self.get_number_of_nodes(),), dtype=np.int_)
+            new_node_map[node_index] = np.arange(self.get_number_of_nodes() - len(unused_nodes_to_be_deleted))
+            # remove nodes
+            self.nodes = np.delete(self.nodes, unused_nodes_to_be_deleted, axis=1)
+            # apply new node map to members
+            self.members = new_node_map[self.members]
 
     def add_members(self, members: npt.ArrayLike,
                     number_of_strings: Optional[int] = None,
