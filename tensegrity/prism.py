@@ -121,3 +121,6 @@ class Prism(Structure):
             else:
                 # solve for equilibrium
                 self.equilibrium(equalities=[np.arange(number_of_strings, members.shape[1])])
+
+            # update mass, volume, stiffness and rest length
+            self.update_member_properties()

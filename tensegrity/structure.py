@@ -1,7 +1,7 @@
 import warnings
 from dataclasses import dataclass
 from functools import reduce
-from typing import Optional, Dict, get_type_hints, Union, List, Sequence
+from typing import Optional, Dict, get_type_hints, Union, List, Sequence, Type, Iterable
 from collections import ChainMap
 
 import numpy as np
@@ -12,16 +12,37 @@ import scipy
 from tensegrity import optim
 
 
+@dataclass
+class Property:
+
+    @classmethod
+    def to_dataframe(cls: Type['Property'], data: Union[list, tuple] = tuple()) -> pd.DataFrame:
+        # setup member property as pandas dataframe
+        hints = get_type_hints(cls)
+        return pd.DataFrame(data=data, columns=list(hints.keys())).astype(dtype=hints)
+
+
 class Structure:
 
     @dataclass
-    class MemberProperty:
-        # columns
+    class NodeProperty(Property):
+        radius: float = 0.01
+        visible: bool = True
+        facecolor: object = (1, 0, 0)
+        edgecolor: object = (1, 0, 0)
+
+    node_defaults = {
+    }
+
+    @dataclass
+    class MemberProperty(Property):
         lmbda: float = 0.
         force: float = 0.
+        stiffness: float = 0.
         volume: float = 0.
+        radius: float = 0.1
         mass: float = 1.
-        restLength: float = 0.
+        rest_length: float = 0.
         # ASTM A36 steel
         yld: float = 250e6
         density: float = 7.85e3
@@ -31,12 +52,6 @@ class Structure:
         edgecolor: object = (1, 0, 0)
         linewidth: int = 2
         linestyle: str = '-'
-
-        @staticmethod
-        def to_dataframe(data: Union[list, tuple] = tuple()) -> pd.DataFrame:
-            # setup member property as pandas dataframe
-            hints = get_type_hints(Structure.MemberProperty)
-            return pd.DataFrame(data=data, columns=list(hints.keys())).astype(dtype=hints)
 
     member_defaults = {
         'bar': {
@@ -53,12 +68,17 @@ class Structure:
                  nodes: npt.ArrayLike = np.zeros((3, 0), np.float_),
                  members: npt.ArrayLike = np.zeros((2, 0), np.int64),
                  number_of_strings: int = 0,
+                 node_tags: Optional[Dict[str, npt.NDArray[np.uint64]]] = None,
                  member_tags: Optional[Dict[str, npt.NDArray[np.uint64]]] = None,
                  label: str = None):
 
-        # label, nodes and members
+        # label
         self.label: Optional[str] = label
+        # nodes
         self.nodes: npt.NDArray[np.float_] = np.zeros((3, 0), np.float_)
+        self.node_tags: Dict[str, npt.NDArray[np.uint64]] = {}
+        self.node_properties: pd.DataFrame = Structure.NodeProperty.to_dataframe()
+        # members
         self.members: npt.NDArray[np.uint64] = np.zeros((2, 0), np.uint64)
         self.member_tags: Dict[str, npt.NDArray[np.uint64]] = {
             'bar': np.zeros((0,), np.uint64),
@@ -67,7 +87,7 @@ class Structure:
         self.member_properties: pd.DataFrame = Structure.MemberProperty.to_dataframe()
 
         # add nodes
-        self.add_nodes(nodes)
+        self.add_nodes(nodes, node_tags)
 
         # add members
         self.add_members(members, number_of_strings, member_tags)
@@ -83,7 +103,8 @@ class Structure:
         # set nodes
         self.nodes: npt.NDArray[np.float_] = nodes
 
-    def add_nodes(self, nodes: npt.ArrayLike):
+    def add_nodes(self, nodes: npt.ArrayLike,
+                  node_tags: Optional[Dict[str, npt.NDArray[np.uint64]]] = None):
 
         # convert to array
         nodes = np.array(nodes, np.float_)
@@ -91,8 +112,41 @@ class Structure:
         # test dimensions
         assert nodes.shape[0] == 3, 'nodes must be a 3 x n array'
 
-        # add nodes
+        # node tags
+        number_of_new_nodes = nodes.shape[1]
+        if node_tags is None:
+            node_tags = {}
+        else:
+            # make sure node tags are unique
+            for k, v in node_tags.items():
+                node_tags[k] = np.unique(v)
+                assert np.amin(v) >= 0, \
+                    'node tag index must be greater or equal than zero'
+                assert np.amax(v) < number_of_new_nodes, \
+                    'node tag index must be less than number of new nodes'
+
+        # new node properties
+        number_of_nodes = self.get_number_of_nodes()
+        # determine tags that have defaults
+        tags_with_defaults = list(set(node_tags.keys()) & set(Structure.node_defaults.keys()))
+        # apply defaults
+        new_node_properties = [Structure.NodeProperty(**ChainMap(*[Structure.node_defaults[tag]
+                                                                   for tag in tags_with_defaults
+                                                                   if i in node_tags[tag]]))
+                               for i in range(nodes.shape[1])]
+
+        # add new nodes
         self.nodes: npt.NDArray[np.float_] = np.hstack((self.nodes, nodes))
+
+        # add node tags
+        for k, v in node_tags.items():
+            self.node_tags[k] = np.hstack((self.node_tags[k], number_of_nodes + v)) \
+                if k in self.node_tags else number_of_nodes + v
+
+        # add default node properties
+        self.node_properties = pd.concat((self.node_properties,
+                                          Structure.NodeProperty.to_dataframe(new_node_properties)),
+                                         ignore_index=True)
 
     def get_number_of_nodes(self) -> int:
         return self.nodes.shape[1]
@@ -233,14 +287,63 @@ class Structure:
     def get_member_properties(self, index: Union[int, Sequence[int]], labels: List[str]) -> pd.DataFrame:
         return self.member_properties.loc[index, labels]
 
-    def get_member_length(self):
+    def get_member_vectors(self) -> npt.NDArray[np.float_]:
+        # member vectors
+        return self.nodes[:, self.members[1, :]] - self.nodes[:, self.members[0, :]]
+
+    def get_member_length(self) -> npt.NDArray[np.float_]:
         return np.linalg.norm(self.nodes[:, self.members[1, :]] - self.nodes[:, self.members[0, :]], axis=0)
 
-    def get_center_of_mass(self):
+    def get_center_of_mass(self) -> npt.NDArray[np.float_]:
         # Computes the center of mass
         mass = self.member_properties['mass'].values
         return np.sum(mass * (self.nodes[:, self.members[0, :]] + self.nodes[:, self.members[1, :]])/2, axis=1) \
             / np.sum(mass)
+
+    def update_member_properties(self, property_name: Optional[Union[str, Iterable[str]]] = None):
+        # Update member properties. If property_name is
+        #
+        # - 'stiffness': calculate 'stiffness' and 'rest_length' based on 'modulus', 'radius' and 'lmbda'
+        # - 'mass': calculate 'mass' and 'volume' based on 'radius' and 'density'
+
+        if isinstance(property_name, str):
+
+            # update stiffness and rest length
+            if property_name == 'stiffness':
+                member_length = self.get_member_length()
+                modulus_times_area = self.member_properties['modulus'].values * np.pi * self.member_properties['radius'].values ** 2
+                stiffness = modulus_times_area / member_length
+                if np.any(stiffness < 0):
+                    raise f'Structure::update_member_property: negative stiffness computed'
+                rest_length = member_length * (1 - self.member_properties['lmbda'].values / stiffness)
+                if np.any(rest_length < 0):
+                    raise f'Structure::update_member_property: negative rest_length computed'
+                self.member_properties['stiffness'] = stiffness
+                self.member_properties['rest_length'] = rest_length
+
+            elif property_name == 'mass':
+                member_length = self.get_member_length()
+                volume = np.pi * self.member_properties['radius'] ** 2 * member_length
+                if np.any(volume < 0):
+                    raise f'Structure::update_member_property: negative volume computed'
+                mass = volume * self.member_properties['density']
+                if np.any(mass < 0):
+                    raise f'Structure::update_member_property: negative mass computed'
+                self.member_properties['volume'] = volume
+                self.member_properties['mass'] = mass
+
+            else:
+                raise f'Structure::update_member_property: do not know how to update property {property_name}'
+
+        else:
+
+            # iterate all if None
+            if property_name is None:
+                property_name = ['mass', 'stiffness']
+
+            # iterate properties
+            for prop in property_name:
+                self.update_member_properties(prop)
 
     def merge(self, s: 'Structure'):
         # merge Structure s into current structure
@@ -252,17 +355,25 @@ class Structure:
         # merge nodes
         self.nodes = np.hstack((self.nodes, s.nodes))
 
+        # merge node tags
+        for k, v in s.node_tags.items():
+            # append or add
+            self.node_tags[k] = np.hstack((self.node_tags[k], number_of_nodes + v)) \
+                if k in self.node_tags \
+                else number_of_nodes + v
+
+        # merge node properties
+        self.node_properties = pd.concat((self.node_properties, s.node_properties), ignore_index=True)
+
         # merge members, offset by number of nodes
         self.members = np.hstack((self.members, number_of_nodes + s.members))
 
         # merge member tags
         for k, v in s.member_tags.items():
-            if k in self.member_tags:
-                # append
-                self.member_tags[k] = np.hstack((self.member_tags[k], number_of_members + v))
-            else:
-                # add
-                self.member_tags[k] = number_of_members + v
+            # append or add
+            self.member_tags[k] = np.hstack((self.member_tags[k], number_of_members + v)) \
+                if k in self.member_tags \
+                else number_of_members + v
 
         # merge member properties
         self.member_properties = pd.concat((self.member_properties, s.member_properties), ignore_index=True)
@@ -284,8 +395,6 @@ class Structure:
         # If no external force is given then the sum of the bar force coefficients equals lambda_bar
         # All elements in the rows of equalities are set equal
 
-        nodes = self.nodes
-        members = self.members
         number_of_nodes = self.get_number_of_nodes()
         number_of_strings = len(self.member_tags.get('string', []))
         number_of_bars = len(self.member_tags.get('bar', []))
@@ -294,11 +403,8 @@ class Structure:
         assert number_of_members == number_of_bars + number_of_strings, \
             'number of members is not equal to the sum of number of bars and strings'
 
-        # dimensions
-        n = number_of_members
-
         # member vectors
-        M = nodes[:, members[1, :]] - nodes[:, members[0, :]]
+        member_vectors = self.get_member_vectors()
 
         # coefficient matrix
         Aeq = np.zeros((3 * number_of_nodes, number_of_members))
@@ -307,21 +413,21 @@ class Structure:
         if number_of_strings:
             for i in self.member_tags['string']:
 
-                ii = 3 * int(members[0, i])
-                Aeq[ii:ii+3, i] = M[:, i]
+                ii = 3 * int(self.members[0, i])
+                Aeq[ii:ii+3, i] = member_vectors[:, i]
 
-                jj = 3 * int(members[1, i])
-                Aeq[jj:jj+3, i] = -M[:, i]
+                jj = 3 * int(self.members[1, i])
+                Aeq[jj:jj+3, i] = -member_vectors[:, i]
 
         # bar coefficient
         if number_of_bars:
             for i in self.member_tags['bar']:
 
-                ii = 3 * int(members[0, i])
-                Aeq[ii:ii+3, i] = -M[:, i]
+                ii = 3 * int(self.members[0, i])
+                Aeq[ii:ii+3, i] = -member_vectors[:, i]
 
-                jj = 3 * int(members[1, i])
-                Aeq[jj:jj+3, i] = M[:, i]
+                jj = 3 * int(self.members[1, i])
+                Aeq[jj:jj+3, i] = member_vectors[:, i]
 
         A = Aeq
         m = 3 * number_of_nodes
@@ -366,7 +472,7 @@ class Structure:
         c = np.ones((number_of_members,))
 
         # solve lp
-        cost, gamma, status = optim.lp(n, m, c, A, blo, bup, xlo, xup)
+        cost, gamma, status = optim.lp(number_of_members, m, c, A, blo, bup, xlo, xup)
 
         # flip sign for bars
         lmbda = gamma
@@ -381,5 +487,67 @@ class Structure:
         # assign lambda
         self.member_properties['lmbda'] = lmbda
 
+    def stiffness(self, epsilon: float = 1e-6):
+        # Compute
+        #   v: potential energy (1 x 1)
+        #   F: force vectors (3 x n)
+        #   K: stiffness matrix (3 n x 3 n)
+        #   M: mass matrix (n x 1)
 
+        number_of_nodes = self.get_number_of_nodes()
+        number_of_strings = len(self.member_tags.get('string', []))
+        number_of_bars = len(self.member_tags.get('bar', []))
+        number_of_members = number_of_strings + number_of_bars
 
+        assert number_of_members == number_of_bars + number_of_strings, \
+            'number of members is not equal to the sum of number of bars and strings'
+
+        # member vectors
+        member_vectors = self.get_member_vectors()
+        member_length = self.get_member_length()
+
+        k = self.member_properties['stiffness'].values
+        lmbda = self.member_properties['lmbda'].values
+        mass = self.member_properties['mass'].values
+
+        # compute potential
+        v = np.sum(((lmbda * member_length) ** 2) / k / 2)
+
+        # Compute force and stiffness
+        # TODO: sparsify
+        F = np.zeros((3, number_of_nodes))
+        K = np.zeros((3 * number_of_nodes, 3 * number_of_nodes))
+        for i in range(number_of_members):
+
+            mij = member_vectors[:, i] / member_length[i]
+            fij = lmbda[i] * member_vectors[:, i]
+
+            mijmij = np.outer(mij, mij)
+            # kij = k[i] * Mij + lmbda[i] * (np.eye(3) - Mij)
+            kij = (k[i] - lmbda[i]) * mijmij + lmbda[i] * np.eye(3)
+
+            i, j = self.members[:, i].astype(dtype=np.int_)
+
+            F[:, i] += fij
+            F[:, j] -= fij
+
+            ii = 3 * i
+            jj = 3 * j
+
+            K[ii:ii+3, ii:ii+3] += kij
+            K[jj:jj+3, jj:jj+3] += kij
+            K[ii:ii+3, jj:jj+3] -= kij
+            K[jj:jj+3, ii:ii+3] -= kij
+
+        # Compute mass
+        M = np.zeros((number_of_nodes,))
+        M[self.members[0, :]] = mass / 2
+        M[self.members[1, :]] += mass / 2
+        M = np.diag(np.kron(M, np.ones((3,))))
+
+        # Check forces
+        sum_of_forces = np.linalg.norm(F, ord='fro')
+        if sum_of_forces > epsilon:
+            warnings.warn(f'Structure::stiffness: force balance not satisfied, sum of forces = {sum_of_forces}')
+
+        return v, F, K, M
