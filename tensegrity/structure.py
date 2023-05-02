@@ -26,10 +26,10 @@ class Structure:
 
     @dataclass
     class NodeProperty(Property):
-        radius: float = 0.01
+        radius: float = 0.002
         visible: bool = True
-        facecolor: object = (1, 0, 0)
-        edgecolor: object = (1, 0, 0)
+        facecolor: object = (0, 0.4470, 0.7410)
+        edgecolor: object = (0, 0.4470, 0.7410)
 
     node_defaults = {
     }
@@ -40,7 +40,7 @@ class Structure:
         force: float = 0.
         stiffness: float = 0.
         volume: float = 0.
-        radius: float = 0.1
+        radius: float = 0.01
         mass: float = 1.
         rest_length: float = 0.
         # ASTM A36 steel
@@ -55,12 +55,12 @@ class Structure:
 
     member_defaults = {
         'bar': {
-            'facecolor': (1, 0, 0),
-            'edgecolor': (1, 0, 0)
+            'facecolor': (0, 0.4470, 0.7410),
+            'edgecolor': (0, 0.4470, 0.7410)
         },
         'string': {
-            'facecolor': (1, 1, 1),
-            'edgecolor': (0, 0, 0)
+            'facecolor': (0.8500, 0.3250, 0.0980),
+            'edgecolor': (0.8500, 0.3250, 0.0980)
         }
     }
 
@@ -151,14 +151,16 @@ class Structure:
     def get_number_of_nodes(self) -> int:
         return self.nodes.shape[1]
 
-    def translate(self, v: npt.NDArray):
+    def translate(self, v: npt.NDArray) -> 'Structure':
         assert v.shape == (3,), 'v must be a three dimensional vector'
         self.nodes += v.reshape((3, 1))
+        return self
 
-    def rotate(self, v: npt.NDArray):
+    def rotate(self, v: npt.NDArray) -> 'Structure':
         assert v.shape == (3,), 'v must be a three dimensional vector'
         rotation = scipy.spatial.transform.Rotation.from_rotvec(v)
         self.nodes = rotation.apply(self.nodes.transpose()).transpose()
+        return self
 
     def get_unused_nodes(self):
         # calculate nodes that are in use

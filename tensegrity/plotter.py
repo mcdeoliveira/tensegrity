@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Tuple, Optional, Union, Sequence
 
 from .structure import Structure
 import numpy as np
@@ -9,10 +9,7 @@ from scipy.spatial.transform import Rotation
 
 class Plotter:
 
-    def __init__(self, s: Structure):
-        self.s = s
-
-    def plot(self, **kwargs):
+    def plot(self, s: Structure, **kwargs):
         pass
 
     @staticmethod
@@ -26,7 +23,7 @@ class Plotter:
 
     @staticmethod
     def cylinder(node1: npt.NDArray, node2: npt.NDArray,
-                 volume: float = 0., radius: float = 0.01, n: int = 10) -> Tuple[npt.NDArray, npt.NDArray, npt.NDArray]:
+                 volume: float = 0., radius: float = 0.01, n: int = 12) -> Tuple[npt.NDArray, npt.NDArray, npt.NDArray]:
 
         # rod vector length
         rod = node2 - node1
@@ -90,7 +87,7 @@ class MatplotlibPlotter(Plotter):
 
     @staticmethod
     def plot_solid_cylinder(ax: plt.Axes, nodes: npt.NDArray[np.float_], i: int, j: int,
-                            volume: float = 0., radius: float = 0.01, n: int = 6,
+                            volume: float = 0., radius: float = 0.01, n: int = 12,
                             **kwargs):
 
         # cylinder nodes
@@ -98,20 +95,48 @@ class MatplotlibPlotter(Plotter):
 
         ax.plot_surface(x, y, z, **kwargs)
 
-    def __init__(self, s: Structure):
-        super().__init__(s)
+    def __init__(self, plotter: Optional['MatplotlibPlotter'] = None,
+                 fig: Optional[plt.Figure] = None, ax: Optional[plt.Axes] = None):
+        # call super
+        super().__init__()
 
-        # initialize figure
-        self.fig, self.ax = plt.subplots(subplot_kw={"projection": "3d"})
+        # initialize plotter
+        if plotter is not None:
+            if ax is not None or fig is not None:
+                raise 'fig and ax handles can not be given when plotter is given'
+            self.fig, self.ax = plotter.get_handles()
 
-    def plot(self, **kwargs) -> Tuple[plt.Figure, plt.Axes]:
+        elif fig is None:
+            if ax is not None:
+                raise 'fig handle must be given when ax is given'
+            # initialize figure and axis
+            self.fig, self.ax = plt.subplots(subplot_kw={"projection": "3d"})
+
+        elif ax is None:
+            # initialize axis
+            self.ax = fig.subplots(subplot_kw={"projection": "3d"})
+
+        else:
+            # assign fig and axis
+            self.fig, self.ax = fig, ax
+
+    def get_handles(self) -> Tuple[plt.Figure, plt.Axes]:
+        return self.fig, self.ax
+
+    def plot(self, s: Union[Structure, Sequence[Structure]], **kwargs):
+
+        # loop if a sequence is given
+        if not isinstance(s, Structure):
+            for si in s:
+                self.plot(si)
+            return
 
         # process options
         defaults = MatplotlibPlotter.defaults.copy()
         defaults.update(kwargs)
 
         # plot nodes
-        nodes = self.s.nodes
+        nodes = s.nodes
         if defaults['plot_nodes']:
             self.ax.plot(nodes[0, :], nodes[1, :], nodes[2, :],
                     defaults['node_marker'],
@@ -122,18 +147,16 @@ class MatplotlibPlotter(Plotter):
                     markeredgecolor=defaults['node_edgecolor'])
 
         # plot members
-        members = self.s.members
+        members = s.members
         if defaults['plot_members']:
-            for j in range(self.s.get_number_of_members()):
-                if self.s.has_member_tag(j, 'string'):
+            for j in range(s.get_number_of_members()):
+                if s.has_member_tag(j, 'string'):
                     # plot strings as lines
-                    kwargs = self.s.get_member_properties(j, ['facecolor', 'linewidth']).to_dict()
+                    kwargs = s.get_member_properties(j, ['facecolor', 'linewidth']).to_dict()
                     kwargs['color'] = kwargs['facecolor']
                     del kwargs['facecolor']
                     MatplotlibPlotter.plot_line(self.ax, nodes, members[0, j], members[1, j], **kwargs)
                 else:
                     # plot others as solid elements
-                    kwargs = self.s.get_member_properties(j, ['facecolor', 'edgecolor', 'volume']).to_dict()
+                    kwargs = s.get_member_properties(j, ['facecolor', 'edgecolor', 'volume']).to_dict()
                     MatplotlibPlotter.plot_solid_cylinder(self.ax, nodes, members[0, j], members[1, j], **kwargs)
-
-        return self.fig, self.ax

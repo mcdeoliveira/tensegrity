@@ -1,4 +1,3 @@
-import warnings
 from typing import Optional
 import numpy as np
 import numpy.typing as npt
@@ -13,22 +12,27 @@ class Stiffness:
     #     M: the mass matrix (optional)
     #
     # such that
+    #                                        ..    ..
+    #     V = y^T fy = (1/2) y^T K y + (1/2) y^T M y,
+    #     x = T y
     #
-    #     V = x^T f = (1/2) x^T K x, x = T y
+    # Note that the stiffness and mass matrices are stored in the reduced coordinates y but the interface is in terms
+    # of the global coordinates x. In global coordinates
+    #
+    #     fy = T^T fx,    Kx = T^T K T,    Mx = T^T M T
     #
     # The matrix T is often given implicitly as the constraint
     #
     #     R x = 0
 
     def __init__(self, K: npt.NDArray,
-                 R: Optional[npt.NDArray] = None, T: Optional[npt.NDArray] = None, M: Optional[npt.NDArray] = None):
+                 M: Optional[npt.NDArray] = None,
+                 R: Optional[npt.NDArray] = None, T: Optional[npt.NDArray] = None):
 
         self.K = K
         self.M = M
         self.T = T
         self.R = R
-
-        assert not(R is not None and T is not None), 'R and T cannot both be given'
 
         assert K.ndim == 2 and K.shape[0] == K.shape[1], 'K must be a square matrix'
 
@@ -36,16 +40,16 @@ class Stiffness:
             assert M.ndim == 2 and M.shape[0] == M.shape[1] and M.shape[0] == K.shape[0], \
                 'M must be a square matrix of same size as K'
 
+        assert not(R is not None and T is not None), 'R and T cannot both be given'
+
         if T is not None:
             assert T.ndim == 2 and T.shape[0] == K.shape[0], 'T must have the same number of rows as K'
 
         if R is not None:
-            assert R.ndim == 2 and R.shape[1] == K.shape[0], 'R must have the same number of columns as K'
-
             # apply constraint
             self.apply_constraint(R)
 
-    def apply_constraint(self, R: npt.NDArray):
+    def apply_constraint(self, R: npt.NDArray, local: bool = True):
         # Apply the constraint
         #
         #     R y = 0,    x = T y
@@ -56,13 +60,28 @@ class Stiffness:
         #
         #     y = V z,    R V = 0,    V^T V > 0
         #
-        # The reduced model is then
+        # The new model after applying the constraint is
         #
-        #     V = z^T fr = (1/2) z^T Kr z,   x = Tr z
+        #     V = z^T fz = (1/2) z^T Kz z,   x = Tz z
         #
         # in which
         #
-        #     fr = T^T f,    Kr = T^T K T,    Tr = V T
+        #     fz = T^T f,    Kz = T^T K T,    Tz = T V
+        #
+        # If 'local' = False then the constraint is considered on the global coordinate
+        #
+        #     R x = 0,    x = T y
+        #
+        # which correspond to the constraint on the local coordinate
+        #
+        #     R T y = 0
+
+        if not local:
+            if self.T is not None:
+                assert R.ndim == 2 and R.shape[1] == self.T.shape[0], 'R must have the same number of columns as T'
+                R = R @ self.T
+
+        assert R.ndim == 2 and R.shape[1] == self.K.shape[0], 'R must have the same number of columns as K'
 
         # calculate null space
         V = scipy.linalg.null_space(R)
@@ -89,7 +108,7 @@ class Stiffness:
             self.T = V @ self.T
 
     def displacements(self, f: npt.NDArray):
-        # Calculate displacements due to force f
+        # Calculate global displacements due to the global force f
         #
         #     x = T K^(-1) T^T f
 
@@ -145,7 +164,7 @@ class Stiffness:
 
     @staticmethod
     def rigid_body_constraint(nodes: npt.NDArray) -> npt.NDArray:
-        # Construct rigid body constraint matrix R x = 0
+        # Construct rigid body constraint matrix R x = 0 in global coordinates
 
         assert len(nodes.shape) == 2 and nodes.shape[0] == 3, 'nodes must be a 3 x m matrix'
 
