@@ -30,7 +30,7 @@ class TestStiffness(unittest.TestCase):
         # apply constraint
         S.apply_constraint(R)
         # calculate eigenvalues
-        d = S.eigs()[0]
+        d = S.eigs(k=6)[0]
         # no rigid body nodes
         self.assertEqual(np.count_nonzero(d < 1e-3), 0)
         # 1 soft node
@@ -46,11 +46,11 @@ class TestStiffness(unittest.TestCase):
         # apply constraint
         S.apply_constraint(R)
         # eigenmodes
-        d = S.eigenmodes()[0]
+        d = S.eigenmodes(k=6)[0]
         # no rigid body nodes
         self.assertEqual(np.count_nonzero(d < 1e-3), 0)
         # 1 soft node
-        self.assertEqual(np.count_nonzero(d < 1e4), 1)
+        self.assertEqual(np.count_nonzero(d < 1e2), 1)
 
 
 if __name__ == '__main__':

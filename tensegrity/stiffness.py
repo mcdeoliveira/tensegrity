@@ -67,6 +67,9 @@ class Stiffness:
         # calculate null space
         V = scipy.linalg.null_space(R)
 
+        if scipy.sparse.issparse(self.K):
+            V = scipy.sparse.csr_matrix(V)
+
         # project stiffness
         self.K = V.transpose() @ self.K @ V
 
@@ -93,27 +96,16 @@ class Stiffness:
         return self.T @ np.linalg.solve(self.K, self.T.transpose() @ f) \
             if self.T is not None else np.linalg.solve(self.K, self.T.transpose() @ f)
 
-    def eigs(self):
-        # compute the eigenvalues and eigenvectors of the stiffness matrix
-
-        # neig = K.shape[0]
-        # opts.disp = 0;
-        # opts.issym = 1;
-        # neig, 'SM', opts
+    def eigs(self, k: int = 12):
+        # compute the (k smallest) eigenvalues and associated eigenvectors of the (sparse) stiffness matrix
 
         if scipy.sparse.issparse(self.K):
             # calculate sparse eigenvalues
-            d, V = scipy.sparse.linalg.eigsh(self.K, k=12, which='SM')
+            d, V = scipy.sparse.linalg.eigsh(self.K, k=k, which='SM')
 
         else:
             # calculate dense eigenvalues
             d, V = np.linalg.eigh(self.K)
-
-            if np.any(d < 0):
-                if np.min(d) < -1e-8 * np.max(d):
-                    raise 'negative eigenvalues'
-                warnings.warn('small negative eigenvalues')
-                d = np.abs(d)
 
         # [d, dInd] = np.sort(d)
         # sort eigs
@@ -125,28 +117,18 @@ class Stiffness:
 
         return d[ind], V[:, ind]
 
-    def eigenmodes(self, units='Hz'):
+    def eigenmodes(self, k: int = 12, units='Hz'):
         # compute the natural frequencies[rad/s] and eigenvectors for the stiffness
 
         if self.M is None:
             raise 'modes cannot be calculated without mass information'
 
-        # factor M
-        Mh = scipy.linalg.sqrtm(self.M)
-        K = Mh @ self.K @ Mh
-
-        # neig = K.shape[0]
-        # opts.disp = 0;
-        # opts.issym = 1;
-        # neig, 'SM', opts
-
-        # calculate eigenvalues
-        d, V = np.linalg.eigh(K)
-        if np.any(d < 0):
-            if np.min(d) < -1e-8 * np.max(d):
-                raise 'negative eigenvalues'
-            warnings.warn('small negative eigenvalues')
-            d = np.abs(d)
+        if scipy.sparse.issparse(self.K):
+            # calculate sparse eigenvalues
+            d, V = scipy.sparse.linalg.eigsh(self.K, k=k, M=self.M, which='SM')
+        else:
+            # calculate dense eigenvalues
+            d, V = scipy.linalg.eigh(self.K, self.M)
 
         # [d, dInd] = np.sort(d)
         # sort eigs

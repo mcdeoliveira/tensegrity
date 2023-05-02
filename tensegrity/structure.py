@@ -559,7 +559,14 @@ class Structure:
         M = np.zeros((number_of_nodes,))
         M[self.members[0, :]] = mass / 2
         M[self.members[1, :]] += mass / 2
-        M = np.diag(np.kron(M, np.ones((3,))))
+
+        diag = np.kron(M, np.ones((3,)))
+        if storage == 'sparse':
+            # sparse storage
+            M = scipy.sparse.diags(diag, format='csr')
+        else:
+            # dense storage
+            M = np.diag(np.kron(M, np.ones((3,))))
 
         # Check forces
         sum_of_forces = np.linalg.norm(F, ord='fro')
