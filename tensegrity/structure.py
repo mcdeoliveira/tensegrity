@@ -487,7 +487,7 @@ class Structure:
         # assign lambda
         self.member_properties['lmbda'] = lmbda
 
-    def stiffness(self, epsilon: float = 1e-6):
+    def stiffness(self, epsilon: float = 1e-6, storage: str = 'sparse'):
         # Compute
         #   v: potential energy (1 x 1)
         #   F: force vectors (3 x n)
@@ -514,9 +514,25 @@ class Structure:
         v = np.sum(((lmbda * member_length) ** 2) / k / 2)
 
         # Compute force and stiffness
-        # TODO: sparsify
+
+        # preallocate F
         F = np.zeros((3, number_of_nodes))
-        K = np.zeros((3 * number_of_nodes, 3 * number_of_nodes))
+        # preallocate K
+        if storage == 'sparse':
+            # sparse storage
+            diag = np.unique(self.members)
+            diff = np.unique(self.members, axis=1)
+            row_col = np.hstack((np.vstack((diag, diag)), diff, np.flipud(diff)))
+            data = np.zeros((row_col.shape[1]))
+            K = scipy.sparse.kron(scipy.sparse.coo_matrix((data, row_col),
+                                                          shape=(number_of_nodes, number_of_nodes)),
+                              np.eye(3)).tocsr()
+        else:
+            # dense storage
+            K = np.zeros((3 * number_of_nodes, 3 * number_of_nodes))
+
+        lmbda * member_vectors
+        # calculate stiffness and force
         for i in range(number_of_members):
 
             mij = member_vectors[:, i] / member_length[i]

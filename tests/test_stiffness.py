@@ -3,7 +3,7 @@ import unittest
 import numpy as np
 
 from tensegrity.prism import Prism
-from tensegrity.stiffness import rigid_body_constraint, apply_constraint, eigenmodes
+from tensegrity.stiffness import Stiffness
 
 
 class TestStiffness(unittest.TestCase):
@@ -12,46 +12,45 @@ class TestStiffness(unittest.TestCase):
 
         s = Prism(3)
         v, F, K, M = s.stiffness()
-        v = np.linalg.eigvalsh(K)
+        S = Stiffness(K, M=M)
+        d = S.eigs()[0]
         # 6 rigid body nodes
-        self.assertEqual(np.count_nonzero(v < 1e-3), 6)
+        self.assertEqual(np.count_nonzero(d < 1e-3), 6)
         # 6 rigid body nodes + 1 soft node
-        self.assertEqual(np.count_nonzero(v < 1e7), 7)
+        self.assertEqual(np.count_nonzero(d < 1e7), 7)
 
     def test_rigid_body(self):
 
         s = Prism(3)
         # calculate stiffness
         v, F, K, M = s.stiffness()
+        S = Stiffness(K, M=M)
         # get rigid body constraint
-        R = rigid_body_constraint(s.nodes)
+        R = Stiffness.rigid_body_constraint(s.nodes)
         # apply constraint
-        Kr, T = apply_constraint(R, K)[:2]
+        S.apply_constraint(R)
         # calculate eigenvalues
-        v = np.linalg.eigvalsh(Kr)
+        d = S.eigs()[0]
         # no rigid body nodes
-        self.assertEqual(np.count_nonzero(v < 1e-3), 0)
+        self.assertEqual(np.count_nonzero(d < 1e-3), 0)
         # 1 soft node
-        self.assertEqual(np.count_nonzero(v < 1e7), 1)
+        self.assertEqual(np.count_nonzero(d < 1e7), 1)
 
     def test_eigenmodes(self):
         s = Prism(3)
         # calculate stiffness
         v, F, K, M = s.stiffness()
-        # eigenmodes
-        d, V = eigenmodes(K, M)
+        S = Stiffness(K, M=M)
         # get rigid body constraint
-        R = rigid_body_constraint(s.nodes)
+        R = Stiffness.rigid_body_constraint(s.nodes)
         # apply constraint
-        Kr, T, Mr = apply_constraint(R, K, None, M)
-        # calculate eigenvalues
-        v = np.linalg.eigvalsh(Kr)
-        # no rigid body nodes
-        self.assertEqual(np.count_nonzero(v < 1e-3), 0)
-        # 1 soft node
-        self.assertEqual(np.count_nonzero(v < 1e7), 1)
+        S.apply_constraint(R)
         # eigenmodes
-        d, V = eigenmodes(Kr, Mr, T)
+        d = S.eigenmodes()[0]
+        # no rigid body nodes
+        self.assertEqual(np.count_nonzero(d < 1e-3), 0)
+        # 1 soft node
+        self.assertEqual(np.count_nonzero(d < 1e4), 1)
 
 
 if __name__ == '__main__':
