@@ -1,7 +1,7 @@
 import warnings
 from dataclasses import dataclass
 from functools import reduce
-from typing import Optional, Dict, get_type_hints, Union, List, Sequence, Type, Iterable
+from typing import Optional, Dict, get_type_hints, Union, List, Sequence, Type, Iterable, Tuple, Set
 from collections import ChainMap
 
 import numpy as np
@@ -92,6 +92,22 @@ class Structure:
         # add members
         self.add_members(members, number_of_strings, member_tags)
 
+    def copy(self) -> 'Structure':
+
+        # instantiate copy of the current structure
+        copy = self.__class__()
+
+        # copy basic structure
+        copy.label = self.label
+        copy.nodes = self.nodes.copy()
+        copy.node_tags = self.node_tags.copy()
+        copy.node_properties = self.node_properties.copy()
+        copy.members = self.members.copy()
+        copy.member_tags = self.member_tags.copy()
+        copy.member_properties = self.member_properties.copy()
+
+        return copy
+
     def set_nodes(self, nodes: npt.ArrayLike):
 
         # convert to array
@@ -171,11 +187,12 @@ class Structure:
     def has_unused_nodes(self) -> bool:
         return len(self.get_unused_nodes()) > 0
 
-    def remove_nodes(self, nodes_to_be_deleted: Optional[npt.ArrayLike] = None):
+    def remove_nodes(self, nodes_to_be_deleted: Optional[npt.ArrayLike] = None,
+                     verify_if_unused: bool = True, verbose: bool = False):
         if nodes_to_be_deleted is None:
             # delete all unused nodes
             unused_nodes_to_be_deleted = self.get_unused_nodes()
-        else:
+        elif verify_if_unused:
             # sort nodes to be deleted
             nodes_to_be_deleted = np.unique(nodes_to_be_deleted)
             # calculate nodes that are in use
@@ -186,14 +203,27 @@ class Structure:
             number_of_used_nodes = len(nodes_to_be_deleted) - len(unused_nodes_to_be_deleted)
             if number_of_used_nodes:
                 warnings.warn(f'{number_of_used_nodes} nodes are still in use and were not deleted')
+                if verbose:
+                    warnings.warn('The following nodes will not be removed: ' 
+                                  f'{np.intersect1d(nodes_to_be_deleted, used_nodes, assume_unique=True)}')
+        else:
+            # go ahead without verifying if nodes are unused
+            # WARNING: this may result in orphan members!
+            unused_nodes_to_be_deleted = nodes_to_be_deleted
         # delete if there are any unused nodes
         if len(unused_nodes_to_be_deleted):
+            if verbose:
+                warnings.warn('The following nodes will be removed: '
+                              f'{unused_nodes_to_be_deleted}')
             # create new node map
             node_index = np.delete(np.arange(self.get_number_of_nodes()), unused_nodes_to_be_deleted)
             new_node_map = np.zeros((self.get_number_of_nodes(),), dtype=np.int_)
             new_node_map[node_index] = np.arange(self.get_number_of_nodes() - len(unused_nodes_to_be_deleted))
             # remove nodes
             self.nodes = np.delete(self.nodes, unused_nodes_to_be_deleted, axis=1)
+            # remove node properties
+            self.node_properties.drop(unused_nodes_to_be_deleted, inplace=True)
+            self.node_properties.reset_index(inplace=True)
             # apply new node map to members
             self.members = new_node_map[self.members]
 
@@ -347,38 +377,76 @@ class Structure:
             for prop in property_name:
                 self.update_member_properties(prop)
 
-    def merge(self, s: 'Structure'):
+    def get_close_nodes(self, radius=1e-6) -> Tuple[Set[int], npt.NDArray]:
+        # return the merge map or none if no close nodes
+
+        tree = scipy.spatial.KDTree(self.nodes.transpose())
+        indices = tree.query_ball_tree(tree, r=radius)
+        close_nodes_map = np.arange(self.get_number_of_nodes())
+        close_nodes_set = set()
+        for i, neighbors in enumerate(indices):
+            for k in [j for j in neighbors if j > i]:
+                close_nodes_map[k] = i
+                close_nodes_set.add(k)
+        if close_nodes_set:
+            # apply map until no changes
+            while True:
+                last_merge_map = close_nodes_map.copy()
+                close_nodes_map = close_nodes_map[close_nodes_map]
+                if np.all(last_merge_map == close_nodes_map):
+                    break
+        return close_nodes_set, close_nodes_map
+
+    def merge_close_nodes(self, radius: float = 1e-6, verbose: bool = False):
+        # get close nodes
+        close_nodes_set, close_nodes_map = self.get_close_nodes(radius)
+        if close_nodes_set:
+            # list of nodes to be removed
+            nodes_to_be_removed = list(close_nodes_set)
+            # apply merge_map to members
+            self.members = close_nodes_map[self.members]
+            # remove nodes, to make sure the member node numbering is correct
+            self.remove_nodes(nodes_to_be_removed, verify_if_unused=False, verbose=verbose)
+
+    def merge(self, s: 'Structure', inplace=False) -> Optional['Structure']:
         # merge Structure s into current structure
+
+        if inplace:
+            target = self
+        else:
+            target = self.copy()
 
         # offset members in s by number_of_members
         number_of_members = self.get_number_of_members()
         number_of_nodes = self.get_number_of_nodes()
 
         # merge nodes
-        self.nodes = np.hstack((self.nodes, s.nodes))
+        target.nodes = np.hstack((self.nodes, s.nodes))
 
         # merge node tags
         for k, v in s.node_tags.items():
             # append or add
-            self.node_tags[k] = np.hstack((self.node_tags[k], number_of_nodes + v)) \
+            target.node_tags[k] = np.hstack((self.node_tags[k], number_of_nodes + v)) \
                 if k in self.node_tags \
                 else number_of_nodes + v
 
         # merge node properties
-        self.node_properties = pd.concat((self.node_properties, s.node_properties), ignore_index=True)
+        target.node_properties = pd.concat((self.node_properties, s.node_properties), ignore_index=True)
 
         # merge members, offset by number of nodes
-        self.members = np.hstack((self.members, number_of_nodes + s.members))
+        target.members = np.hstack((self.members, number_of_nodes + s.members))
 
         # merge member tags
         for k, v in s.member_tags.items():
             # append or add
-            self.member_tags[k] = np.hstack((self.member_tags[k], number_of_members + v)) \
+            target.member_tags[k] = np.hstack((self.member_tags[k], number_of_members + v)) \
                 if k in self.member_tags \
                 else number_of_members + v
 
         # merge member properties
-        self.member_properties = pd.concat((self.member_properties, s.member_properties), ignore_index=True)
+        target.member_properties = pd.concat((self.member_properties, s.member_properties), ignore_index=True)
+
+        return target
 
     def equilibrium(self, b: Optional[npt.ArrayLike] = None, lambda_bar: float = 1,
                     equalities: Optional[list[npt.ArrayLike]] = None,

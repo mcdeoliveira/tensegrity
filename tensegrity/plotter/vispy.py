@@ -1,7 +1,9 @@
-from .plotter import Plotter
-from .structure import Structure
+from typing import Sequence, Union
 
-from vispy import app, scene
+from tensegrity.structure import Structure
+from .plotter import Plotter
+
+from vispy import scene as vispyscene
 
 
 class VisPyPlotter(Plotter):
@@ -17,26 +19,47 @@ class VisPyPlotter(Plotter):
         'node_edgecolor': (1, 1, 1)
     }
 
-    def __init__(self, s: Structure):
-        super().__init__(s)
+    def __init__(self, camera=None, scene=None):
+
+        scene_kwargs = {
+            'keys': 'interactive',
+            'size': (600, 600)
+        }
+        if scene:
+            scene_kwargs.update(scene)
+
+        camera_kwargs = {
+            'fov': 0,
+            'scale_factor': 1
+        }
+        if camera:
+            camera_kwargs.update(camera if camera else {})
 
         # Create canvas and view
-        self.canvas = scene.SceneCanvas(keys='interactive', size=(600, 600), show=True)
+        self.canvas = vispyscene.SceneCanvas(**scene_kwargs)
         self.view = self.canvas.central_widget.add_view()
-        self.view.camera = scene.cameras.ArcballCamera(fov=0)
-        self.view.camera.scale_factor = 10
+        self.view.camera = vispyscene.cameras.ArcballCamera(**camera_kwargs)
 
-    def plot(self, **kwargs):
+    def get_canvas(self):
+        return self.canvas
+
+    def plot(self, s: Union[Structure, Sequence[Structure]], **kwargs):
+
+        # loop if a sequence is given
+        if not isinstance(s, Structure):
+            for si in s:
+                self.plot(si, **kwargs)
+            return
 
         # process options
         defaults = VisPyPlotter.defaults.copy()
         defaults.update(kwargs)
 
         # plot nodes
-        nodes = self.s.nodes
+        nodes = s.nodes
         if defaults['plot_nodes']:
             # Create and show visual
-            vis = scene.visuals.Markers(
+            vis = vispyscene.visuals.Markers(
                 pos=nodes.transpose(),
                 size=defaults['node_markersize'],
                 antialias=0,
@@ -49,26 +72,24 @@ class VisPyPlotter(Plotter):
             vis.parent = self.view.scene
 
         # plot members
-        members = self.s.members
+        members = s.members
         if defaults['plot_members']:
-            for j in range(self.s.get_number_of_members()):
-                if self.s.has_member_tag(j, 'string'):
+            for j in range(s.get_number_of_members()):
+                if s.has_member_tag(j, 'string'):
                     # plot strings as lines
-                    kwargs = self.s.get_member_properties(j, ['facecolor', 'linewidth']).to_dict()
+                    kwargs = s.get_member_properties(j, ['facecolor', 'linewidth']).to_dict()
                     kwargs['color'] = kwargs['facecolor']
                     del kwargs['facecolor']
                     kwargs['width'] = kwargs['linewidth']
                     del kwargs['linewidth']
                     line = nodes[:, [members[0, j], members[1, j]]].transpose()
-                    vis = scene.visuals.Line(line, **kwargs)
+                    vis = vispyscene.visuals.Line(line, **kwargs)
                     vis.parent = self.view.scene
                 else:
                     # plot others as solid elements
-                    kwargs = self.s.get_member_properties(j, ['facecolor']).to_dict()
+                    kwargs = s.get_member_properties(j, ['facecolor']).to_dict()
                     kwargs['color'] = kwargs['facecolor']
                     del kwargs['facecolor']
                     line = nodes[:, [members[0, j], members[1, j]]].transpose()
-                    vis = scene.visuals.Tube(line, radius=.025, **kwargs)
+                    vis = vispyscene.visuals.Tube(line, radius=.025, **kwargs)
                     vis.parent = self.view.scene
-
-        # return self.fig, self.ax

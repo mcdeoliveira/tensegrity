@@ -9,14 +9,14 @@ class Prism(Structure):
     def __init__(self, p: int = 3,
                  top_radius: float = 1, bottom_radius: float = 1, height: float = 1,
                  label: str = None, calculate_equilibrium=True, equilibrium_method='analytic',
-                 **_options):
+                 **kwargs):
 
         # proper size
         assert p >= 3, 'p must be greater or equal to 3'
 
         # twist angle
-        if 'alpha' in _options:
-            alpha = _options.pop('alpha')
+        if 'alpha' in kwargs:
+            alpha = kwargs.pop('alpha')
         else:
             alpha = np.pi/2 - np.pi/p
 
@@ -28,7 +28,7 @@ class Prism(Structure):
             'diagonal': False,
             'bar': True
         }
-        options.update(_options)
+        options.update(kwargs)
 
         # valid equilibrium?
         if calculate_equilibrium:
@@ -64,10 +64,9 @@ class Prism(Structure):
             nodes[:2, p + i] = rotation_beta @ nodes[:2, p + i - 1]
 
         # strings
-        members = np.zeros((2,0))
+        members = np.zeros((2, 0))
         number_of_strings = 0
-        string_tags = {
-        }
+        string_tags = {}
         # bottom strings
         bottom_strings = np.vstack((np.arange(p), np.mod(1 + np.arange(p), p)))
         if options['bottom']:
