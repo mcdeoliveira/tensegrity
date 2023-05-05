@@ -15,7 +15,8 @@ class Michell(Structure):
             'michell': True,
             'radial': True,
             'outer': True,
-            'inner': True
+            'inner': True,
+            'center': True
         }
         options.update(kwargs)
 
@@ -84,11 +85,22 @@ class Michell(Structure):
         # reshape nodes
         nodes = nodes.reshape((3, n * q), order='F')
 
+        # add center
+        if options['center']:
+            nodes = np.hstack((nodes, np.zeros((3, 1))))
+            center_node_index = nodes.shape[1] - 1
+            center_members = np.zeros((2*n, 1))
+            for i in range(n):
+                center_members[2*i:2*(i+1), 0] = [node_index(i, q-1), center_node_index]
+
+            # reshape members
+            members = np.hstack((members, center_members.reshape((2, n), order='F')))
+
         # print(nodes)
         # print(members)
 
         # remove used options
-        kwargs = {k: v for k, v in options.items() if k not in ['michell', 'radial', 'outer', 'inner']}
+        kwargs = {k: v for k, v in options.items() if k not in ['michell', 'radial', 'outer', 'inner', 'center']}
 
         # call super
         super().__init__(nodes, members, label=label, **kwargs)

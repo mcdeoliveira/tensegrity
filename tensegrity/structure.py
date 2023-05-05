@@ -596,7 +596,7 @@ class Structure:
             data = np.zeros((row_col.shape[1]))
             K = scipy.sparse.kron(scipy.sparse.coo_matrix((data, row_col),
                                                           shape=(number_of_nodes, number_of_nodes)),
-                              np.eye(3)).tocsr()
+                                  np.ones((3, 3))).tocsr()
         else:
             # dense storage
             K = np.zeros((3 * number_of_nodes, 3 * number_of_nodes))
