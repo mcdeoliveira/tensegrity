@@ -224,6 +224,9 @@ class Structure:
             # remove node properties
             self.node_properties.drop(unused_nodes_to_be_deleted, inplace=True)
             self.node_properties.reset_index(inplace=True)
+            # remove nodes from tags
+            self.node_tags = {k: new_node_map[np.setdiff1d(v, unused_nodes_to_be_deleted)]
+                              for k, v in self.node_tags.items()}
             # apply new node map to members
             self.members = new_node_map[self.members]
 
@@ -297,6 +300,25 @@ class Structure:
         self.member_properties = pd.concat((self.member_properties,
                                             Structure.MemberProperty.to_dataframe(new_member_properties)),
                                            ignore_index=True)
+
+    def remove_members(self, members_to_be_deleted: Optional[npt.ArrayLike] = None,
+                       verbose: bool = False):
+        if members_to_be_deleted:
+            if verbose:
+                warnings.warn('The following members will be removed: '
+                              f'{members_to_be_deleted}')
+            # create new member map
+            member_index = np.delete(np.arange(self.get_number_of_members()), members_to_be_deleted)
+            new_members_map = np.zeros((self.get_number_of_members(),), dtype=np.int_)
+            new_members_map[member_index] = np.arange(self.get_number_of_members() - len(members_to_be_deleted))
+            # remove members
+            self.members = np.delete(self.members, members_to_be_deleted, axis=1)
+            # remove member properties
+            self.member_properties.drop(members_to_be_deleted, inplace=True)
+            self.member_properties.reset_index(inplace=True)
+            # remove members from tags
+            self.member_tags = {k: new_members_map[np.setdiff1d(v, members_to_be_deleted)]
+                                 for k, v in self.member_tags.items()}
 
     def get_number_of_members(self) -> int:
         return self.members.shape[1]

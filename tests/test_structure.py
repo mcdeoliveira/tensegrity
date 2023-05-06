@@ -368,8 +368,9 @@ class TestStructure(unittest.TestCase):
     def test_remove_nodes(self):
 
         nodes1 = np.array([[1, 0, 0, 0], [0, 1, 0, 1], [0, 0, 2, 1]])
+        nodes1_tags = {'tags': np.array([0, 2, 3], dtype=np.uint64)}
         members1 = np.array([[0, 1, 2], [1, 2, 0]])
-        s = Structure(nodes1, members1, number_of_strings=2)
+        s = Structure(nodes1, members1, number_of_strings=2, node_tags=nodes1_tags)
 
         np.testing.assert_array_equal(s.get_unused_nodes(), [3])
         self.assertTrue(s.has_unused_nodes())
@@ -379,10 +380,11 @@ class TestStructure(unittest.TestCase):
         self.assertEqual(len(s.node_properties), 3)
         np.testing.assert_array_equal(s.node_properties.index, np.arange(3))
         np.testing.assert_array_equal(s.members, members1)
+        np.testing.assert_array_equal(s.node_tags['tags'], [0, 2])
         self.assertFalse(s.has_unused_nodes())
 
         members2 = np.array([[0, 1, 3], [1, 3, 0]])
-        s = Structure(nodes1, members2, number_of_strings=2)
+        s = Structure(nodes1, members2, number_of_strings=2, node_tags=nodes1_tags)
 
         np.testing.assert_array_equal(s.get_unused_nodes(), [2])
         self.assertTrue(s.has_unused_nodes())
@@ -391,10 +393,11 @@ class TestStructure(unittest.TestCase):
         np.testing.assert_array_equal(s.nodes, nodes1[:, [0, 1, 3]])
         self.assertEqual(len(s.node_properties), 3)
         np.testing.assert_array_equal(s.node_properties.index, np.arange(3))
+        np.testing.assert_array_equal(s.node_tags['tags'], [0, 2])
         np.testing.assert_array_equal(s.members, members1)
 
         members3 = np.array([[0, 3], [3, 0]])
-        s = Structure(nodes1, members3, number_of_strings=2)
+        s = Structure(nodes1, members3, number_of_strings=2, node_tags=nodes1_tags)
 
         np.testing.assert_array_equal(s.get_unused_nodes(), [1, 2])
         self.assertTrue(s.has_unused_nodes())
@@ -402,10 +405,11 @@ class TestStructure(unittest.TestCase):
         s.remove_nodes([1, 2])
         np.testing.assert_array_equal(s.nodes, nodes1[:, [0, 3]])
         np.testing.assert_array_equal(s.members, np.array([[0, 1], [1, 0]]))
+        np.testing.assert_array_equal(s.node_tags['tags'], [0, 1])
         self.assertFalse(s.has_unused_nodes())
 
         members4 = np.array([[1, 3], [3, 1]])
-        s = Structure(nodes1, members4, number_of_strings=2)
+        s = Structure(nodes1, members4, number_of_strings=2, node_tags=nodes1_tags)
 
         np.testing.assert_array_equal(s.get_unused_nodes(), [0, 2])
         self.assertTrue(s.has_unused_nodes())
@@ -415,10 +419,11 @@ class TestStructure(unittest.TestCase):
         self.assertEqual(len(s.node_properties), 2)
         np.testing.assert_array_equal(s.node_properties.index, np.arange(2))
         np.testing.assert_array_equal(s.members, np.array([[0, 1], [1, 0]]))
+        np.testing.assert_array_equal(s.node_tags['tags'], [1])
         self.assertFalse(s.has_unused_nodes())
 
         # has used nodes
-        s = Structure(nodes1, members1, number_of_strings=2)
+        s = Structure(nodes1, members1, number_of_strings=2, node_tags=nodes1_tags)
 
         np.testing.assert_array_equal(s.get_unused_nodes(), [3])
         self.assertTrue(s.has_unused_nodes())
@@ -430,9 +435,10 @@ class TestStructure(unittest.TestCase):
         self.assertEqual(len(s.node_properties), 3)
         np.testing.assert_array_equal(s.node_properties.index, np.arange(3))
         np.testing.assert_array_equal(s.members, members1)
+        np.testing.assert_array_equal(s.node_tags['tags'], [0, 2])
         self.assertFalse(s.has_unused_nodes())
 
-        s = Structure(nodes1, members1, number_of_strings=2)
+        s = Structure(nodes1, members1, number_of_strings=2, node_tags=nodes1_tags)
 
         np.testing.assert_array_equal(s.get_unused_nodes(), [3])
         self.assertTrue(s.has_unused_nodes())
@@ -444,12 +450,13 @@ class TestStructure(unittest.TestCase):
         self.assertEqual(len(s.node_properties), 4)
         np.testing.assert_array_equal(s.node_properties.index, np.arange(4))
         np.testing.assert_array_equal(s.members, members1)
+        np.testing.assert_array_equal(s.node_tags['tags'], [0, 2, 3])
         self.assertTrue(s.has_unused_nodes())
 
         # None as parameter
 
         members3 = np.array([[0, 3], [3, 0]])
-        s = Structure(nodes1, members3, number_of_strings=2)
+        s = Structure(nodes1, members3, number_of_strings=2, node_tags=nodes1_tags)
 
         np.testing.assert_array_equal(s.get_unused_nodes(), [1, 2])
         self.assertTrue(s.has_unused_nodes())
@@ -459,7 +466,39 @@ class TestStructure(unittest.TestCase):
         self.assertEqual(len(s.node_properties), 2)
         np.testing.assert_array_equal(s.node_properties.index, np.arange(2))
         np.testing.assert_array_equal(s.members, np.array([[0, 1], [1, 0]]))
+        np.testing.assert_array_equal(s.node_tags['tags'], [0, 1])
         self.assertFalse(s.has_unused_nodes())
+
+    def test_remove_members(self):
+
+        nodes = np.array([[1, 0, 0, 0], [0, 1, 0, 1], [0, 0, 2, 1]])
+        nodes_tags = {'tags': np.array([0, 2, 3], dtype=np.uint64)}
+        members = np.array([[0, 1, 2], [1, 2, 0]])
+        members_tag = {'mtag': np.array([0, 2], dtype=np.uint64)}
+
+        s = Structure(nodes, members, number_of_strings=2, node_tags=nodes_tags, member_tags=members_tag)
+
+        s.remove_members([2])
+        np.testing.assert_array_equal(s.nodes, nodes)
+        self.assertEqual(len(s.node_properties), 4)
+        np.testing.assert_array_equal(s.members, members[:, :2])
+        np.testing.assert_array_equal(s.member_tags['mtag'], [0])
+
+        s = Structure(nodes, members, number_of_strings=2, node_tags=nodes_tags, member_tags=members_tag)
+
+        s.remove_members([0, 1])
+        np.testing.assert_array_equal(s.nodes, nodes)
+        self.assertEqual(len(s.node_properties), 4)
+        np.testing.assert_array_equal(s.members, members[:, [2]])
+        np.testing.assert_array_equal(s.member_tags['mtag'], [0])
+
+        s = Structure(nodes, members, number_of_strings=2, node_tags=nodes_tags, member_tags=members_tag)
+
+        s.remove_members([1, 2])
+        np.testing.assert_array_equal(s.nodes, nodes)
+        self.assertEqual(len(s.node_properties), 4)
+        np.testing.assert_array_equal(s.members, members[:, [0]])
+        np.testing.assert_array_equal(s.member_tags['mtag'], [0])
 
     def test_close_node(self):
 
