@@ -114,7 +114,7 @@ class Structure:
         nodes = np.array(nodes, np.float_)
 
         # test dimensions
-        assert np.equal(nodes.shape, self.nodes.shape), 'nodes shape must match current shape'
+        assert np.all(nodes.shape == self.nodes.shape), 'nodes shape must match current shape'
 
         # set nodes
         self.nodes: npt.NDArray[np.float_] = nodes
@@ -168,15 +168,44 @@ class Structure:
         return self.nodes.shape[1]
 
     def translate(self, v: npt.NDArray) -> 'Structure':
+        # `translate(v)` translates nodes of the structure by the 3D vector `v`
         assert v.shape == (3,), 'v must be a three dimensional vector'
         self.nodes += v.reshape((3, 1))
         return self
 
     def rotate(self, v: npt.NDArray) -> 'Structure':
+        # `rotate(v)` rotates the nodes of the structure around the 3D vector `v`
+        # the magnitude of the vector equals the rotation angle in radians
         assert v.shape == (3,), 'v must be a three dimensional vector'
         rotation = scipy.spatial.transform.Rotation.from_rotvec(v)
         self.nodes = rotation.apply(self.nodes.transpose()).transpose()
         return self
+
+    def reflect(self, v: npt.NDArray, p: Optional[npt.NDArray] = None):
+        # `reflects(v, p)` reflects the structure about a plane normal to the vector `v`, passing through the point `p`.
+        # If no point is given, it defaults to the origin.
+        assert v.shape == (3,), 'v must be a three dimensional vector'
+
+        if p is not None:
+            assert p.shape == (3,), 'p must be a three dimensional vector'
+            # translate by p
+            self.nodes -= p.reshape((3, 1))
+
+        # normalize v
+        length = np.linalg.norm(v)
+        if length < 1e-6:
+            warnings.warn('norm of vector v is too small, reflection not performed')
+            return
+
+        # calculate reflection matrix
+        reflection_matrix = np.eye(3) - (2 / length**2) * np.outer(v, v)
+
+        # transform nodes
+        self.nodes = reflection_matrix @ self.nodes
+
+        if p is not None:
+            # translate back to p
+            self.nodes += p.reshape((3, 1))
 
     def get_unused_nodes(self):
         # calculate nodes that are in use

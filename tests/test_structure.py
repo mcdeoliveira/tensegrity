@@ -365,6 +365,23 @@ class TestStructure(unittest.TestCase):
         R = scipy.spatial.transform.Rotation.from_rotvec(v)
         np.testing.assert_array_equal(s.nodes, R.apply(nodes1.transpose()).transpose())
 
+    def test_reflect(self):
+
+        nodes1 = np.array([[1, 0, 0, 0], [0, 1, 0, 1], [0, 0, 2, 1]])
+        members1 = np.array([[0, 1, 2, 3], [1, 2, 0, 0]])
+        s = Structure(nodes1, members1, number_of_strings=2)
+
+        v = np.array([1, 1, 1])
+        s.reflect(v)
+        H = np.eye(3) - 2 * np.outer(v, v)/(np.linalg.norm(v)**2)
+        np.testing.assert_array_equal(s.nodes, H @ nodes1)
+
+        s.set_nodes(nodes1)
+        p = np.array([1, -1, 2])
+        s.reflect(v, p)
+        p = p.reshape((3, 1))
+        np.testing.assert_array_equal(s.nodes, (H @ (nodes1 - p)) + p)
+
     def test_remove_nodes(self):
 
         nodes1 = np.array([[1, 0, 0, 0], [0, 1, 0, 1], [0, 0, 2, 1]])
