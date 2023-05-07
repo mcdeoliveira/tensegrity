@@ -96,13 +96,14 @@ class MatplotlibPlotter(Plotter):
         members = s.members
         if defaults['plot_members']:
             for j in range(s.get_number_of_members()):
-                if s.has_member_tag(j, 'string'):
-                    # plot strings as lines
-                    kwargs = s.get_member_properties(j, ['facecolor', 'linewidth']).to_dict()
-                    kwargs['color'] = kwargs['facecolor']
-                    del kwargs['facecolor']
-                    MatplotlibPlotter.plot_line(self.ax, nodes, members[0, j], members[1, j], **kwargs)
-                else:
-                    # plot others as solid elements
-                    kwargs = s.get_member_properties(j, ['facecolor', 'edgecolor', 'volume']).to_dict()
-                    MatplotlibPlotter.plot_solid_cylinder(self.ax, nodes, members[0, j], members[1, j], **kwargs)
+                if s.member_properties.loc[j, 'visible']:
+                    if s.has_member_tag(j, 'string'):
+                        # plot strings as lines
+                        kwargs = s.get_member_properties(j, ['facecolor', 'linewidth']).to_dict()
+                        kwargs['color'] = kwargs['facecolor']
+                        del kwargs['facecolor']
+                        MatplotlibPlotter.plot_line(self.ax, nodes, members[0, j], members[1, j], **kwargs)
+                    else:
+                        # plot others as solid elements
+                        kwargs = s.get_member_properties(j, ['facecolor', 'edgecolor', 'volume']).to_dict()
+                        MatplotlibPlotter.plot_solid_cylinder(self.ax, nodes, members[0, j], members[1, j], **kwargs)

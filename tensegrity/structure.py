@@ -36,7 +36,7 @@ class Structure:
 
     @dataclass
     class MemberProperty(Property):
-        lmbda: float = 0.
+        lambda_: float = 0.
         force: float = 0.
         stiffness: float = 0.
         volume: float = 0.
@@ -71,6 +71,16 @@ class Structure:
                  node_tags: Optional[Dict[str, npt.NDArray[np.uint64]]] = None,
                  member_tags: Optional[Dict[str, npt.NDArray[np.uint64]]] = None,
                  label: str = None):
+        """
+        Creates a ``Structure``
+
+        :param nodes: a 3 x n array representing the ``Structure``'s nodes
+        :param members: a 3 x m array representing the ``Structure``'s members
+        :param number_of_strings: the number of strings in ``Structure``
+        :param node_tags: a dictionary with the node tags
+        :param member_tags: a dictionary with the member tags
+        :param label: the ``Structure``'s label
+        """
 
         # label
         self.label: Optional[str] = label
@@ -93,6 +103,9 @@ class Structure:
         self.add_members(members, number_of_strings, member_tags)
 
     def copy(self) -> 'Structure':
+        """
+        :return: copy of the Structure
+        """
 
         # instantiate copy of the current structure
         copy = self.__class__()
@@ -108,8 +121,12 @@ class Structure:
 
         return copy
 
-    def set_nodes(self, nodes: npt.ArrayLike):
+    def set_nodes(self, nodes: npt.ArrayLike) -> None:
+        """
+        Set nodes of the ``Structure``
 
+        :param nodes: the nodes
+        """
         # convert to array
         nodes = np.array(nodes, np.float_)
 
@@ -120,7 +137,14 @@ class Structure:
         self.nodes: npt.NDArray[np.float_] = nodes
 
     def add_nodes(self, nodes: npt.ArrayLike,
-                  node_tags: Optional[Dict[str, npt.NDArray[np.uint64]]] = None):
+                  node_tags: Optional[Dict[str, npt.NDArray[np.uint64]]] = None) -> None:
+        """
+        Add nodes to the ``Structure``
+
+        :param nodes: the nodes to add
+        :param node_tags: the node tags to add
+        """
+        # add nodes and tags to current structure
 
         # convert to array
         nodes = np.array(nodes, np.float_)
@@ -165,15 +189,30 @@ class Structure:
                                          ignore_index=True)
 
     def get_number_of_nodes(self) -> int:
+        """
+        :return: the number of nodes in ``Structure``
+        """
         return self.nodes.shape[1]
 
     def translate(self, v: npt.NDArray) -> 'Structure':
+        """
+        Translate all nodes of the ``Structure`` by the 3D vector ``v``
+
+        :param v: the 3D translation vector
+        :return: self
+        """
         # `translate(v)` translates nodes of the structure by the 3D vector `v`
         assert v.shape == (3,), 'v must be a three dimensional vector'
         self.nodes += v.reshape((3, 1))
         return self
 
     def rotate(self, v: npt.NDArray) -> 'Structure':
+        """
+        Rotate all nodes of the ``Structure`` by the 3D vector ``v``
+
+        :param v: the 3D rotation vector
+        :return: self
+        """
         # `rotate(v)` rotates the nodes of the structure around the 3D vector `v`
         # the magnitude of the vector equals the rotation angle in radians
         assert v.shape == (3,), 'v must be a three dimensional vector'
@@ -181,9 +220,15 @@ class Structure:
         self.nodes = rotation.apply(self.nodes.transpose()).transpose()
         return self
 
-    def reflect(self, v: npt.NDArray, p: Optional[npt.NDArray] = None):
-        # `reflects(v, p)` reflects the structure about a plane normal to the vector `v`, passing through the point `p`.
-        # If no point is given, it defaults to the origin.
+    def reflect(self, v: npt.NDArray, p: Optional[npt.NDArray] = None) -> 'Structure':
+        """
+        Reflects the structure about a plane normal to the vector `v`, passing through the point `p`.
+        If no point is given, it defaults to the origin.
+
+        :param v: the 3D normal vector
+        :param p: the 3D origin vector
+        :return: self
+        """
         assert v.shape == (3,), 'v must be a three dimensional vector'
 
         if p is not None:
@@ -195,7 +240,7 @@ class Structure:
         length = np.linalg.norm(v)
         if length < 1e-6:
             warnings.warn('norm of vector v is too small, reflection not performed')
-            return
+            return self
 
         # calculate reflection matrix
         reflection_matrix = np.eye(3) - (2 / length**2) * np.outer(v, v)
@@ -207,17 +252,33 @@ class Structure:
             # translate back to p
             self.nodes += p.reshape((3, 1))
 
-    def get_unused_nodes(self):
+        return self
+
+    def get_unused_nodes(self) -> npt.NDArray[np.uint64]:
+        """
+        :return: an array with the indices of the unused nodes
+        """
         # calculate nodes that are in use
         used_nodes = np.unique(self.members)
         # return unused nodes
         return np.setdiff1d(np.arange(self.get_number_of_nodes()), used_nodes, assume_unique=True)
 
     def has_unused_nodes(self) -> bool:
+        """
+        :return: ``True`` if there are no unused nodes
+        """
         return len(self.get_unused_nodes()) > 0
 
     def remove_nodes(self, nodes_to_be_deleted: Optional[npt.ArrayLike] = None,
-                     verify_if_unused: bool = True, verbose: bool = False):
+                     verify_if_unused: bool = True, verbose: bool = False) -> None:
+        """
+        Remove nodes from structure
+
+        :param nodes_to_be_deleted: the indices of the nodes to be deleted; if ``None``,
+                                    delete all currently unused nodes
+        :param verify_if_unused: if ``True`` verifies if the nodes to be deleted are not in use
+        :param verbose: if ``True`` warns of the nodes to be deleted
+        """
         if nodes_to_be_deleted is None:
             # delete all unused nodes
             unused_nodes_to_be_deleted = self.get_unused_nodes()
@@ -261,7 +322,15 @@ class Structure:
 
     def add_members(self, members: npt.ArrayLike,
                     number_of_strings: Optional[int] = None,
-                    member_tags: Optional[Dict[str, npt.NDArray[np.uint64]]] = None):
+                    member_tags: Optional[Dict[str, npt.NDArray[np.uint64]]] = None) -> None:
+        """
+        Add members and tags to current structure
+
+        :param members: the members to be added
+        :param number_of_strings: the number of strings; if not ``None``,  then the first `number_of_strings` members
+                                  are tagged as 'strings' and the remaining members as 'bars'
+        :param  member_tags: the new members' tags
+        """
 
         # convert to array
         members = np.array(members, np.uint64)
@@ -332,6 +401,13 @@ class Structure:
 
     def remove_members(self, members_to_be_deleted: Optional[npt.ArrayLike] = None,
                        verbose: bool = False):
+        """
+        Remove members from ``Structure``
+
+        :param members_to_be_deleted: the indices of the members to be deleted
+        :param verbose: if ``True`` warns of the members to be deleted
+        :return:
+        """
         if members_to_be_deleted:
             if verbose:
                 warnings.warn('The following members will be removed: '
@@ -350,15 +426,37 @@ class Structure:
                                  for k, v in self.member_tags.items()}
 
     def get_number_of_members(self) -> int:
+        """
+        :return: the number of members in ``Structure``
+        """
         return self.members.shape[1]
 
-    def get_member_tags(self, i: int) -> List[str]:
-        return [k for k, v in self.member_tags.items() if i in v]
+    def get_member_tags(self, index: int) -> List[str]:
+        """
+        A list with the tags for the member with index ``index``
 
-    def has_member_tag(self, i: int, tag: str) -> bool:
-        return tag in self.member_tags and i in self.member_tags[tag]
+        :param index: the index of the member
+        :return: list of tags
+        """
+        return [k for k, v in self.member_tags.items() if index in v]
+
+    def has_member_tag(self, index: int, tag: str) -> bool:
+        """
+        Return ``True`` if member with index ``index`` has tag ``tag``
+
+        :param index: the index of the member
+        :param tag: the tag
+        :return: ``True`` or ``False``
+        """
+        return tag in self.member_tags and index in self.member_tags[tag]
 
     def get_members_by_tags(self, tags: Sequence[str]) -> npt.NDArray[np.uint64]:
+        """
+        Return a list of member indices that have tags in the sequence ``tags``
+
+        :param tags: the sequence of tags
+        :return: list of member indices
+        """
         if len(tags) == 0:
             return np.zeros((0,))
         elif len(tags) == 1:
@@ -367,69 +465,249 @@ class Structure:
             return reduce(lambda a1, a2: np.intersect1d(a1, a2, assume_unique=True),
                           [v for k, v in self.member_tags.items() if k in tags])
 
+    def delete_member_tag(self, tag: str) -> None:
+        """
+        Delete member tag ``tag``
+
+        :param tag: the member tag to be deleted
+        """
+        # delete member tag
+        del self.member_tags[tag]
+        if tag in self.member_defaults:
+            del self.member_defaults[tag]
+
+    def set_member_tag(self, tag: str, indices: npt.NDArray[np.uint64]) -> None:
+        """
+        Associate members with indices in ``indices`` to the new tag ``tag``
+
+        :param tag: the member tag
+        :param indices: the member indices
+        """
+        # set new member tag
+
+        # make sure tag is unique
+        assert tag not in self.member_tags, f"member tag '{tag}' already exists"
+
+        # normalize indices
+        v = np.unique(indices)
+
+        # make sure indices are valid
+        number_of_members = self.get_number_of_members()
+        assert np.amin(v) >= 0, \
+            'member tag index must be greater or equal than zero'
+        assert np.amax(v) < number_of_members, \
+            'member tag index must be less than number of members'
+
+        # set tag
+        self.member_tags[tag] = v
+
+    def add_member_tag(self, tag: str, indices: npt.NDArray[np.uint64]) -> None:
+        """
+        Add members with indices in ``indices`` to the existing member tag ``tag``
+
+        :param tag: the member tag
+        :param indices: the member indices
+        """
+
+        # make sure indices are valid
+        number_of_members = self.get_number_of_members()
+        assert np.amin(indices) >= 0, \
+            'member tag index must be greater or equal than zero'
+        assert np.amax(indices) < number_of_members, \
+            'member tag index must be less than number of members'
+
+        # set tag
+        self.member_tags[tag] = np.union1d(self.member_tags[tag], indices)
+
+    def remove_member_tag(self, tag: str, indices: npt.NDArray[np.uint64]) -> None:
+        """
+        Remove members with indices in ``indices`` from the existing member tag ``tag``
+
+        :param tag: the member tag
+        :param indices: the member indices
+        """
+        # remove indices from existing member tag
+
+        # set tag
+        self.member_tags[tag] = np.setdiff1d(self.member_tags[tag], indices)
+
+    def delete_node_tag(self, tag: str) -> None:
+        """
+        Delete node tag ``tag``
+
+        :param tag: the node tag to be deleted
+        """
+        del self.node_tags[tag]
+        if tag in self.node_defaults:
+            del self.node_defaults[tag]
+
+    def set_node_tag(self, tag: str, indices: npt.NDArray[np.uint64]) -> None:
+        """
+        Associate nodes with indices in ``indices`` to the new tag ``tag``
+
+        :param tag: the node tag
+        :param indices: the node indices
+        """
+
+        # make sure tag is unique
+        assert tag not in self.node_tags, f"node tag '{tag}' already exists"
+
+        # normalize indices
+        v = np.unique(indices)
+
+        # make sure indices are valid
+        assert np.amin(v) >= 0, \
+            'node tag index must be greater or equal than zero'
+        assert np.amax(v) < self.get_number_of_nodes(), \
+            'node tag index must be less than number of nodes'
+
+        # set tag
+        self.node_tags[tag] = v
+
+    def add_node_tag(self, tag: str, indices: npt.NDArray[np.uint64]) -> None:
+        """
+        Add nodes with indices in ``indices`` to the existing node tag ``tag``
+
+        :param tag: the node tag
+        :param indices: the node indices
+        """
+
+        # make sure indices are valid
+        assert np.amin(indices) >= 0, \
+            'node tag index must be greater or equal than zero'
+        assert np.amax(indices) < self.get_number_of_nodes(), \
+            'node tag index must be less than number of nodes'
+
+        # set tag
+        self.node_tags[tag] = np.union1d(self.node_tags[tag], indices)
+
+    def remove_node_tag(self, tag: str, indices: npt.NDArray[np.uint64]) -> None:
+        """
+        Remove nodes with indices in ``indices`` from the existing node tag ``tag``
+
+        :param tag: the node tag
+        :param indices: the node indices
+        """
+
+        # set tag
+        self.node_tags[tag] = np.setdiff1d(self.node_tags[tag], indices)
+
     def get_member_properties(self, index: Union[int, Sequence[int]], labels: List[str]) -> pd.DataFrame:
+        """
+        Retrieve member properties
+
+        :param index: the member index
+        :param labels: the member property labels
+        :return: datafrome with the selected properties
+        """
         return self.member_properties.loc[index, labels]
 
     def get_member_vectors(self) -> npt.NDArray[np.float_]:
-        # member vectors
+        """
+        :return: a 3 x m array with the ``Structure``'s members
+        """
         return self.nodes[:, self.members[1, :]] - self.nodes[:, self.members[0, :]]
 
     def get_member_length(self) -> npt.NDArray[np.float_]:
+        """
+        :return: an array with the ``Structure``'s member lengths
+        """
         return np.linalg.norm(self.nodes[:, self.members[1, :]] - self.nodes[:, self.members[0, :]], axis=0)
 
     def get_center_of_mass(self) -> npt.NDArray[np.float_]:
+        """
+        :return: the ``Structure``'s center of mass
+        """
         # Computes the center of mass
         mass = self.member_properties['mass'].values
         return np.sum(mass * (self.nodes[:, self.members[0, :]] + self.nodes[:, self.members[1, :]])/2, axis=1) \
             / np.sum(mass)
 
-    def update_member_properties(self, property_name: Optional[Union[str, Iterable[str]]] = None):
-        # Update member properties. If property_name is
-        #
-        # - 'stiffness': calculate 'stiffness' and 'rest_length' based on 'modulus', 'radius' and 'lmbda'
-        # - 'mass': calculate 'mass' and 'volume' based on 'radius' and 'density'
+    def get_centroid(self) -> npt.NDArray[np.float_]:
+        """
+        :return: the ``Structure``'s geometric center or centroid
+        """
+        # Computes the centroid (geometric center)
+        return np.sum(self.nodes, axis=1) / self.get_number_of_nodes()
+
+    def update_member_properties(self, property_name: Optional[Union[str, Iterable[str]]] = None) -> None:
+        """
+        Update ``Structure``'s member properties
+
+        If property_name is
+
+        - 'stiffness': calculate ``stiffness`` and ``rest_length`` based on ``modulus``, ``radius`` and ``lambda_``
+        - 'mass': calculate ``mass`` and ``volume`` based on ``radius`` and ``density``
+        - 'force': calculate ``force`` based on ``lambda_``
+
+        :param property_name: the property name to update; if ``None``, update all properties
+        """
 
         if isinstance(property_name, str):
 
             # update stiffness and rest length
             if property_name == 'stiffness':
                 member_length = self.get_member_length()
-                modulus_times_area = self.member_properties['modulus'].values * np.pi * self.member_properties['radius'].values ** 2
+                modulus_times_area = self.member_properties['modulus'].values * np.pi * \
+                                     (self.member_properties['radius'].values ** 2)
                 stiffness = modulus_times_area / member_length
                 if np.any(stiffness < 0):
-                    raise f'Structure::update_member_property: negative stiffness computed'
-                rest_length = member_length * (1 - self.member_properties['lmbda'].values / stiffness)
+                    raise Exception(f'Structure::update_member_property: negative stiffness computed')
+                rest_length = member_length * (1 - self.member_properties['lambda_'].values / stiffness)
                 if np.any(rest_length < 0):
-                    raise f'Structure::update_member_property: negative rest_length computed'
+                    raise Exception(f'Structure::update_member_property: negative rest_length computed')
                 self.member_properties['stiffness'] = stiffness
                 self.member_properties['rest_length'] = rest_length
 
+            # update mass and volume
             elif property_name == 'mass':
                 member_length = self.get_member_length()
                 volume = np.pi * self.member_properties['radius'] ** 2 * member_length
                 if np.any(volume < 0):
-                    raise f'Structure::update_member_property: negative volume computed'
+                    raise Exception(f'Structure::update_member_property: negative volume computed')
                 mass = volume * self.member_properties['density']
                 if np.any(mass < 0):
-                    raise f'Structure::update_member_property: negative mass computed'
+                    raise Exception(f'Structure::update_member_property: negative mass computed')
                 self.member_properties['volume'] = volume
                 self.member_properties['mass'] = mass
 
+            # update force
+            elif property_name == 'force':
+                self.member_properties['force'] = self.get_member_length() * self.member_properties['lambda_'].values
+
             else:
-                raise f'Structure::update_member_property: do not know how to update property {property_name}'
+                raise Exception('Structure::update_member_property: '
+                                f'do not know how to update property {property_name}')
 
         else:
 
             # iterate all if None
             if property_name is None:
-                property_name = ['mass', 'stiffness']
+                property_name = ['mass', 'stiffness', 'force']
 
             # iterate properties
             for prop in property_name:
                 self.update_member_properties(prop)
 
     def get_close_nodes(self, radius=1e-6) -> Tuple[Set[int], npt.NDArray]:
-        # return the merge map or none if no close nodes
+        """
+        Returns the set of nodes that lie within ``radius`` distance to other nodes in ``Structure`` and the
+        corresponding map
+
+        For example, if::
+
+            close_nodes, close_nodes_map = s.get_close_nodes()
+
+        is such that::
+
+            close_nodes = {1, 3}
+            close_nodes_map = [0,0,2,2,4]
+
+        then node ``1`` is close to node ``0`` and node ``3`` is close to node ``2``.
+
+        :param radius: the proximity radius
+        :return: tuple with ``close_nodes`` and ``close_nodes_map``
+        """
 
         tree = scipy.spatial.KDTree(self.nodes.transpose())
         indices = tree.query_ball_tree(tree, r=radius)
@@ -448,7 +726,13 @@ class Structure:
                     break
         return close_nodes_set, close_nodes_map
 
-    def merge_close_nodes(self, radius: float = 1e-6, verbose: bool = False):
+    def merge_close_nodes(self, radius: float = 1e-6, verbose: bool = False) -> None:
+        """
+        Merge then remove all nodes in ``Structure`` which lie within ``radius``
+
+        :param radius: the proximity radius
+        :param verbose: if ``True`` issues a warning with number of nodes removed after the merge
+        """
         # get close nodes
         close_nodes_set, close_nodes_map = self.get_close_nodes(radius)
         if close_nodes_set:
@@ -460,7 +744,13 @@ class Structure:
             self.remove_nodes(nodes_to_be_removed, verify_if_unused=False, verbose=verbose)
 
     def merge(self, s: 'Structure', inplace=False) -> Optional['Structure']:
-        # merge Structure s into current structure
+        """
+        Return a new ``Structure`` in which the current `Structure`` and ``s`` are merged
+
+        :param s: the ``Structure`` to merge
+        :param inplace: if ``True`` merge is done in place without creating a copy
+        :return: the merged ``Structure``
+        """
 
         if inplace:
             target = self
@@ -499,22 +789,35 @@ class Structure:
 
         return target
 
-    def equilibrium(self, b: Optional[npt.ArrayLike] = None, lambda_bar: float = 1,
+    def equilibrium(self, force: Optional[npt.ArrayLike] = None, lambda_bar: float = 1,
                     equalities: Optional[list[npt.ArrayLike]] = None,
-                    epsilon: float = 1e-7):
-        # Solve the force equilibrium equation
-        #
-        #   A x = b
-        #
-        # in which:
-        #
-        #    A: in a matrix representing the element vectors
-        #    b: is the vector of external forces
-        #    x: are the force coefficients
-        #
-        # If the ith element is a string then x >= 0
-        # If no external force is given then the sum of the bar force coefficients equals lambda_bar
-        # All elements in the rows of equalities are set equal
+                    epsilon: float = 1e-7) -> None:
+        """
+        Solves for the set of internal forces that ensures the equilibrium of the current ``Structure`` in response
+        to the vector of external forces ``forces``
+
+        Solve the force equilibrium equation
+
+        .. math::
+           A \\lambda = f
+
+        in which:
+
+        - :math:`A`: in a matrix representing the element vectors
+        - :math:`f`: is the vector of external forces
+        - :math:`\\lambda`: is the vector of resulting force coefficients
+
+        If the ith element is a string then :math:`x \\geq 0`
+
+        If no external force is given then the sum of the bar force coefficients equals ``lambda_bar``
+
+        All elements in the rows of equalities are set equal
+
+        :param force: a 3 x n array of external forces; or zero if `None`
+        :param lambda_bar: the normalizing factor
+        :param equalities: a list of lists of member indices which are constrained to have the same force coefficient
+        :param epsilon: numerical accuracy
+        """
 
         number_of_nodes = self.get_number_of_nodes()
         number_of_strings = len(self.member_tags.get('string', []))
@@ -554,12 +857,12 @@ class Structure:
         m = 3 * number_of_nodes
 
         # external forces
-        if b is None:
+        if force is None:
             A = np.vstack((A, np.ones((1, number_of_members))))
             blo = bup = np.hstack((np.zeros((3 * number_of_nodes,)), 1))
         else:
-            beq = np.array(b)
-            assert np.all(beq.shape == [3, number_of_nodes]), 'b must be a 3 x n matrix'
+            beq = np.array(force)
+            assert np.all(beq.shape == [3, number_of_nodes]), 'force must be a 3 x n matrix'
             blo = bup = beq.flatten(order='F')
 
         # For equilibrium: Aeq x = beq
@@ -595,25 +898,38 @@ class Structure:
         # solve lp
         cost, gamma, status = optim.lp(number_of_members, m, c, A, blo, bup, xlo, xup)
 
-        # flip sign for bars
-        lmbda = gamma
-        if number_of_bars:
-            lmbda[self.member_tags['bar']] *= -1
+        # if infeasible, throw error
+        if status == 'infeasible':
+            raise Exception('could not find equilibrium')
 
-            if b is None:
+        # flip sign for bars
+        lambda_ = gamma
+        if number_of_bars:
+            lambda_[self.member_tags['bar']] *= -1
+
+            if force is None:
                 # scale solution for bars
-                scale = -np.sum(lmbda[self.member_tags['bar']]) / number_of_bars
-                lmbda *= np.abs(lambda_bar) / scale
+                scale = -np.sum(lambda_[self.member_tags['bar']]) / number_of_bars
+                lambda_ *= np.abs(lambda_bar) / scale
 
         # assign lambda
-        self.member_properties['lmbda'] = lmbda
+        self.member_properties['lambda_'] = lambda_
 
     def stiffness(self, epsilon: float = 1e-6, storage: str = 'sparse'):
-        # Compute
-        #   v: potential energy (1 x 1)
-        #   F: force vectors (3 x n)
-        #   K: stiffness matrix (3 n x 3 n)
-        #   M: mass matrix (n x 1)
+        """
+        Computes
+
+        - `v`: potential energy (1 x 1)
+        - `F`: force vectors (3 x n)
+        - `K`: stiffness matrix (3 n x 3 n)
+        - `M`: mass matrix (n x 1)
+
+        for the current ``Structure``
+
+        :param epsilon: numerical accuracy
+        :param storage: if ``sparse`` stores the resulting stiffeness and mass matrices in sparse csr format
+        :return: tuple with `v`, `F`, `K`, and `M`
+        """
 
         number_of_nodes = self.get_number_of_nodes()
         number_of_strings = len(self.member_tags.get('string', []))
@@ -628,11 +944,11 @@ class Structure:
         member_length = self.get_member_length()
 
         k = self.member_properties['stiffness'].values
-        lmbda = self.member_properties['lmbda'].values
+        lambda_ = self.member_properties['lambda_'].values
         mass = self.member_properties['mass'].values
 
         # compute potential
-        v = np.sum(((lmbda * member_length) ** 2) / k / 2)
+        v = np.sum(((lambda_ * member_length) ** 2) / k / 2)
 
         # Compute force and stiffness
 
@@ -652,16 +968,16 @@ class Structure:
             # dense storage
             K = np.zeros((3 * number_of_nodes, 3 * number_of_nodes))
 
-        lmbda * member_vectors
+        lambda_ * member_vectors
         # calculate stiffness and force
         for i in range(number_of_members):
 
             mij = member_vectors[:, i] / member_length[i]
-            fij = lmbda[i] * member_vectors[:, i]
+            fij = lambda_[i] * member_vectors[:, i]
 
             mijmij = np.outer(mij, mij)
-            # kij = k[i] * Mij + lmbda[i] * (np.eye(3) - Mij)
-            kij = (k[i] - lmbda[i]) * mijmij + lmbda[i] * np.eye(3)
+            # kij = k[index] * Mij + lambda_[index] * (np.eye(3) - Mij)
+            kij = (k[i] - lambda_[i]) * mijmij + lambda_[i] * np.eye(3)
 
             i, j = self.members[:, i].astype(dtype=np.int_)
 

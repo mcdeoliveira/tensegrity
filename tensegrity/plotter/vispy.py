@@ -75,21 +75,22 @@ class VisPyPlotter(Plotter):
         members = s.members
         if defaults['plot_members']:
             for j in range(s.get_number_of_members()):
-                if s.has_member_tag(j, 'string'):
-                    # plot strings as lines
-                    kwargs = s.get_member_properties(j, ['facecolor', 'linewidth']).to_dict()
-                    kwargs['color'] = kwargs['facecolor']
-                    del kwargs['facecolor']
-                    kwargs['width'] = kwargs['linewidth']
-                    del kwargs['linewidth']
-                    line = nodes[:, [members[0, j], members[1, j]]].transpose()
-                    vis = vispyscene.visuals.Line(line, **kwargs)
-                    vis.parent = self.view.scene
-                else:
-                    # plot others as solid elements
-                    kwargs = s.get_member_properties(j, ['facecolor']).to_dict()
-                    kwargs['color'] = kwargs['facecolor']
-                    del kwargs['facecolor']
-                    line = nodes[:, [members[0, j], members[1, j]]].transpose()
-                    vis = vispyscene.visuals.Tube(line, radius=.025, **kwargs)
-                    vis.parent = self.view.scene
+                if s.member_properties.loc[j, 'visible']:
+                    if s.has_member_tag(j, 'string'):
+                        # plot strings as lines
+                        kwargs = s.get_member_properties(j, ['facecolor', 'linewidth']).to_dict()
+                        kwargs['color'] = kwargs['facecolor']
+                        del kwargs['facecolor']
+                        kwargs['width'] = kwargs['linewidth']
+                        del kwargs['linewidth']
+                        line = nodes[:, [members[0, j], members[1, j]]].transpose()
+                        vis = vispyscene.visuals.Line(line, **kwargs)
+                        vis.parent = self.view.scene
+                    else:
+                        # plot others as solid elements
+                        kwargs = s.get_member_properties(j, ['facecolor']).to_dict()
+                        kwargs['color'] = kwargs['facecolor']
+                        del kwargs['facecolor']
+                        line = nodes[:, [members[0, j], members[1, j]]].transpose()
+                        vis = vispyscene.visuals.Tube(line, radius=.025, **kwargs)
+                        vis.parent = self.view.scene

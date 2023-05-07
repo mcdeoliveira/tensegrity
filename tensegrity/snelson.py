@@ -84,11 +84,11 @@ class Snelson(Structure):
         # s = computeEquil(s, lambdaBar);
         #
         #
-        # for i = 1:size(tags, 1)
+        # for index = 1:size(tags, 1)
         # ind = makeIndex(s, 1, tags
-        # {i, 2});
+        # {index, 2});
         # s = add(s, ind, tags
-        # {i, 1});
+        # {index, 1});
         # end
         #
         # sp.height = h;
@@ -121,11 +121,11 @@ class Snelson(Structure):
         # 'width', 2, 'bar';
         # 'width', 1.5, 'string'};
         #
-        # for i = 1:size(property, 1)
+        # for index = 1:size(property, 1)
         # ind = makeIndex(s, 'all', property
-        # {i, 3});
+        # {index, 3});
         # s = set(s, property
-        # {i, 1}, ind, property
-        # {i, 2} );
+        # {index, 1}, ind, property
+        # {index, 2} );
         # end
 

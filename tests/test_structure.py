@@ -336,7 +336,7 @@ class TestStructure(unittest.TestCase):
         np.testing.assert_array_equal(s.nodes, [[1, 0, 0, 1, 0], [0, 1, 0, 1, 1], [0, 0, 1, 0, 1]])
         np.testing.assert_array_equal(s.member_properties.index, np.arange(4))
 
-    def test_length_and_com_translate(self):
+    def test_length_com_cog_translate(self):
 
         nodes1 = np.array([[1, 0, 0, 0], [0, 1, 0, 1], [0, 0, 2, 1]])
         members1 = np.array([[0, 1, 2, 3], [1, 2, 0, 0]])
@@ -353,6 +353,10 @@ class TestStructure(unittest.TestCase):
         np.testing.assert_array_equal(s.get_center_of_mass(),
                                       (nodes1[:, 1] + nodes1[:, 0] + nodes1[:, 2] + nodes1[:, 1] +
                                        nodes1[:, 0] + nodes1[:, 2] + nodes1[:, 3] + nodes1[:, 0])/8)
+
+        # test center of gravity
+        np.testing.assert_array_equal(s.get_centroid(),
+                                      (nodes1[:, 0] + nodes1[:, 1] + nodes1[:, 2] + nodes1[:, 3])/4)
 
     def test_rotate(self):
 
@@ -566,6 +570,55 @@ class TestStructure(unittest.TestCase):
         self.assertEqual(s.get_number_of_nodes(), 3)
         np.testing.assert_array_equal(s.nodes, nodes1[:, :3])
         np.testing.assert_array_equal(s.members, np.array([[0, 1, 2, 0, 2], [1, 2, 0, 1, 0]]))
+
+    def test_equilibrium_update_member_properties(self):
+
+        nodes = np.array([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0]])
+        members = np.array([[0, 1], [1, 2], [2, 0], [0, 3], [1, 3], [2, 3]]).transpose()
+        s0 = Structure(nodes, members)
+
+        center = s0.get_centroid()
+        s0.add_nodes(center.reshape((3, 1)))
+
+        s1 = s0.copy()
+
+        members = np.array([[0, 4], [1, 4], [2, 4]]).transpose()
+        s1.add_members(members, number_of_strings=3)
+
+        # won't be in equilibrium with only three strings
+        self.assertRaises(Exception, s1.equilibrium)
+
+        s1 = s0.copy()
+
+        members = np.array([[0, 4], [1, 4], [2, 4], [3, 4]]).transpose()
+        s1.add_members(members, number_of_strings=4)
+
+        # equilibrium
+        s1.equilibrium()
+
+        # set properties
+        s1.update_member_properties()
+
+        # forces
+        force = np.hstack((np.kron(np.array([-np.sqrt(2), -1, np.sqrt(11)]), np.ones((3,))), [np.sqrt(3)]))
+        np.testing.assert_allclose(s1.member_properties['force'], force)
+
+        lambda_ = np.hstack((np.kron(np.array([-1, -1, 4]), np.ones((3,))), [4]))
+        np.testing.assert_allclose(s1.member_properties['lambda_'], lambda_)
+
+        np.testing.assert_allclose(s1.member_properties['mass'] / s1.get_member_length() / np.pi,
+                                   157./200. * np.ones((10,)))
+
+        np.testing.assert_allclose(10000 * s1.member_properties['volume'] / s1.get_member_length() / np.pi,
+                                   np.ones((10,)))
+
+        np.testing.assert_allclose(s1.member_properties['stiffness'],
+                                   np.pi * s1.member_properties['modulus'] * s1.member_properties['radius']**2
+                                   / s1.get_member_length())
+
+        np.testing.assert_allclose(s1.member_properties['rest_length'],
+                                   s1.get_member_length() * (1 - s1.member_properties['lambda_'].values
+                                                             / s1.member_properties['stiffness']))
 
 
 if __name__ == '__main__':
