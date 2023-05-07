@@ -4,3 +4,6 @@ __pycache__
 venv
 .idea
 other/
+doc/_build
+doc/_static
+doc/_templates

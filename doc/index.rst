@@ -7,8 +7,11 @@ Welcome to tensegrity's documentation!
 ======================================
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 4
    :caption: Contents:
+
+Get started
+===========
 
 Classes
 =======
@@ -19,7 +22,17 @@ Structure
 .. autoclass:: tensegrity.structure.Structure
    :members:
 
-   .. automethod:: __init__
+Property
+--------
+
+.. autoclass:: tensegrity.structure.Property
+   :members:
+
+Stiffness
+---------
+
+.. autoclass:: tensegrity.stiffness.Stiffness
+   :members:
 
 Indices and tables
 ==================

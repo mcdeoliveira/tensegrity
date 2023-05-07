@@ -620,6 +620,58 @@ class TestStructure(unittest.TestCase):
                                    s1.get_member_length() * (1 - s1.member_properties['lambda_'].values
                                                              / s1.member_properties['stiffness']))
 
+    def test_node_tags(self):
+
+        nodes = np.array([[1, 0, 0, 0, 1], [0, 1, 0, 1, 1], [0, 0, 2, 1, 3]])
+        nodes_tags = {
+            'nags0': np.array([0, 3], dtype=np.uint64),
+            'nags1': np.array([1, 2], dtype=np.uint64)
+        }
+        members = np.array([[0, 1, 2, 3], [1, 2, 0, 4]])
+        members_tag = {
+            'mags0': np.array([0], dtype=np.uint64),
+            'mags1': np.array([1, 2], dtype=np.uint64)
+        }
+        s = Structure(nodes, members, number_of_strings=2, node_tags=nodes_tags, member_tags=members_tag)
+
+        s.set_node_tag('nags2', [0, 3])
+        np.testing.assert_array_equal(s.node_tags['nags2'], [0, 3])
+
+        s.add_node_tag('nags1', [3])
+        np.testing.assert_array_equal(s.node_tags['nags1'], [1, 2, 3])
+
+        s.remove_node_tag('nags1', [2])
+        np.testing.assert_array_equal(s.node_tags['nags1'], [1, 3])
+
+        s.delete_node_tag('nags1')
+        self.assertFalse('nags1' in s.node_tags)
+
+    def test_member_tags(self):
+
+        nodes = np.array([[1, 0, 0, 0, 1], [0, 1, 0, 1, 1], [0, 0, 2, 1, 3]])
+        nodes_tags = {
+            'nags0': np.array([0, 3], dtype=np.uint64),
+            'nags1': np.array([1, 2], dtype=np.uint64)
+        }
+        members = np.array([[0, 1, 2, 3], [1, 2, 0, 4]])
+        members_tag = {
+            'mags0': np.array([0], dtype=np.uint64),
+            'mags1': np.array([1, 2], dtype=np.uint64)
+        }
+        s = Structure(nodes, members, number_of_strings=2, node_tags=nodes_tags, member_tags=members_tag)
+
+        s.set_member_tag('mags2', [0, 3])
+        np.testing.assert_array_equal(s.member_tags['mags2'], [0, 3])
+
+        s.add_member_tag('mags1', [3])
+        np.testing.assert_array_equal(s.member_tags['mags1'], [1, 2, 3])
+
+        s.remove_member_tag('mags1', [2])
+        np.testing.assert_array_equal(s.member_tags['mags1'], [1, 3])
+
+        s.delete_member_tag('mags1')
+        self.assertFalse('mags1' in s.member_tags)
+
 
 if __name__ == '__main__':
     unittest.main()

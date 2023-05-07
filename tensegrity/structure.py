@@ -23,9 +23,22 @@ class Property:
 
 
 class Structure:
+    """
+    A ``Structure`` object
+
+    :param nodes: a 3 x n array representing the ``Structure``'s nodes
+    :param members: a 3 x m array representing the ``Structure``'s members
+    :param number_of_strings: the number of strings in ``Structure``
+    :param node_tags: a dictionary with the node tags
+    :param member_tags: a dictionary with the member tags
+    :param label: the ``Structure``'s label
+    """
 
     @dataclass
     class NodeProperty(Property):
+        """
+        Subclass representing properties of nodes
+        """
         radius: float = 0.002
         visible: bool = True
         facecolor: object = (0, 0.4470, 0.7410)
@@ -36,6 +49,9 @@ class Structure:
 
     @dataclass
     class MemberProperty(Property):
+        """
+        Subclass representing properties of members
+        """
         lambda_: float = 0.
         force: float = 0.
         stiffness: float = 0.
@@ -71,17 +87,6 @@ class Structure:
                  node_tags: Optional[Dict[str, npt.NDArray[np.uint64]]] = None,
                  member_tags: Optional[Dict[str, npt.NDArray[np.uint64]]] = None,
                  label: str = None):
-        """
-        Creates a ``Structure``
-
-        :param nodes: a 3 x n array representing the ``Structure``'s nodes
-        :param members: a 3 x m array representing the ``Structure``'s members
-        :param number_of_strings: the number of strings in ``Structure``
-        :param node_tags: a dictionary with the node tags
-        :param member_tags: a dictionary with the member tags
-        :param label: the ``Structure``'s label
-        """
-
         # label
         self.label: Optional[str] = label
         # nodes
@@ -807,11 +812,21 @@ class Structure:
         - :math:`f`: is the vector of external forces
         - :math:`\\lambda`: is the vector of resulting force coefficients
 
-        If the ith element is a string then :math:`x \\geq 0`
+        If the ith element is a string then
+
+        .. math::
+            x_i \\geq 0
 
         If no external force is given then the sum of the bar force coefficients equals ``lambda_bar``
 
-        All elements in the rows of equalities are set equal
+        All elements in the equalities are set equal. For example, if::
+
+            equalities = [[0, 1, 3], [2, 4]]
+
+        then the equilibrium is shought satisfying the constraints
+
+        .. math::
+            x_0 = x_1 = x_3, \qquad x_2 = x_4
 
         :param force: a 3 x n array of external forces; or zero if `None`
         :param lambda_bar: the normalizing factor
@@ -926,9 +941,11 @@ class Structure:
 
         for the current ``Structure``
 
+        See also :class:`tensegrity.stiffness.Stiffness`
+
         :param epsilon: numerical accuracy
         :param storage: if ``sparse`` stores the resulting stiffeness and mass matrices in sparse csr format
-        :return: tuple with `v`, `F`, `K`, and `M`
+        :return: tuple (`v`, `F`, `K`, `M`)
         """
 
         number_of_nodes = self.get_number_of_nodes()
