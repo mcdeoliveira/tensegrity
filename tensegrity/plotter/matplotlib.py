@@ -9,6 +9,14 @@ from tensegrity.structure import Structure
 
 
 class MatplotlibPlotter(Plotter):
+    """
+    Matplotlib based structure plotter
+
+    :param plotter: :class:`tensegrity.plotter.matplotlib.Matplotlib` object
+    :param fig: :class:`matplotlib.figure` object
+    :param ax: :class:`matplotlib.pyplot.axis` object
+    """
+
     defaults = {
         'plot_nodes': True,
         'plot_members': True,
@@ -21,7 +29,16 @@ class MatplotlibPlotter(Plotter):
     }
 
     @staticmethod
-    def plot_line(ax: plt.Axes, nodes: npt.NDArray[np.float_], i: int, j: int, **kwargs):
+    def plot_line(ax: plt.Axes, nodes: npt.NDArray[np.float_], i: int, j: int, **kwargs) -> None:
+        """
+        Plot line connecting ``nodes[i]`` to ``nodes[j]``
+
+        :param ax: :class:`matplotlib.pyplot.axis` object
+        :param nodes: 3 x m array of nodes
+        :param i: the index of the beginning of the line
+        :param j: the index of the end of the line
+        :param \**kwargs: additional keywords arguments passed to ``matplotlib.axis.plot``
+        """
         # draw lines
         x = np.hstack((nodes[0, i], nodes[0, j]))
         y = np.hstack((nodes[1, i], nodes[1, j]))
@@ -31,7 +48,19 @@ class MatplotlibPlotter(Plotter):
     @staticmethod
     def plot_solid_cylinder(ax: plt.Axes, nodes: npt.NDArray[np.float_], i: int, j: int,
                             volume: float = 0., radius: float = 0.01, n: int = 12,
-                            **kwargs):
+                            **kwargs) -> None:
+        """
+        Plot solid cylinder connecting ``nodes[i]`` to ``nodes[j]``
+
+        :param ax: :class:`matplotlib.pyplot.axis` object
+        :param nodes: 3 x m array of nodes
+        :param i: the index of the beginning of the line
+        :param j: the index of the end of the line
+        :param volume: the cylinder volume
+        :param radius: the cylinder radius
+        :param n: the number of sides of the cylinder
+        :param \**kwargs: additional keywords arguments passed to ``matplotlib.axis.plot``
+        """
 
         # cylinder nodes
         x, y, z = Plotter.cylinder(nodes[:, j], nodes[:, i], volume, radius, n)
@@ -64,12 +93,22 @@ class MatplotlibPlotter(Plotter):
             self.fig, self.ax = fig, ax
 
     def get_handles(self) -> Tuple[plt.Figure, plt.Axes]:
+        """
+        :return: tuple with matplotlib figure and axis
+        """
         return self.fig, self.ax
 
-    def view_init(self, elev=0, azim=0):
-        self.ax.view_init(elev, azim)
+    def view_init(self, elev=0, azim=0, roll=0) -> None:
+        """
+        Set view
 
-    def plot(self, s: Union[Structure, Sequence[Structure]], **kwargs):
+        :param elev: elevation
+        :param azim: azimuth
+        :param roll: roll
+        """
+        self.ax.view_init(elev, azim, roll)
+
+    def plot(self, s: Union[Structure, Sequence[Structure]], **kwargs) -> None:
 
         # loop if a sequence is given
         if not isinstance(s, Structure):
@@ -85,12 +124,12 @@ class MatplotlibPlotter(Plotter):
         nodes = s.nodes
         if defaults['plot_nodes']:
             self.ax.plot(nodes[0, :], nodes[1, :], nodes[2, :],
-                    defaults['node_marker'],
-                    markersize=defaults['node_markersize'],
-                    linewidth=defaults['node_linewidth'],
-                    linestyle=defaults['node_linestyle'],
-                    markerfacecolor=defaults['node_facecolor'],
-                    markeredgecolor=defaults['node_edgecolor'])
+                         defaults['node_marker'],
+                         markersize=defaults['node_markersize'],
+                         linewidth=defaults['node_linewidth'],
+                         linestyle=defaults['node_linestyle'],
+                         markerfacecolor=defaults['node_facecolor'],
+                         markeredgecolor=defaults['node_edgecolor'])
 
         # plot members
         members = s.members

@@ -3,6 +3,7 @@ import unittest
 import numpy as np
 import scipy
 
+from tensegrity.stiffness import NodeConstraint, Stiffness
 from tensegrity.structure import Structure
 
 
@@ -671,6 +672,31 @@ class TestStructure(unittest.TestCase):
 
         s.delete_member_tag('mags1')
         self.assertFalse('mags1' in s.member_tags)
+
+    def test_node_constraint(self):
+
+        nodes = np.array([[1, 0, 0, 0, 1], [0, 1, 0, 1, 1], [0, 0, 2, 1, 3]])
+        nodes_tags = {
+            'nags0': np.array([0, 3], dtype=np.uint64),
+            'nags1': np.array([1, 2], dtype=np.uint64)
+        }
+        members = np.array([[0, 1, 2, 3], [1, 2, 0, 4]])
+        members_tag = {
+            'mags0': np.array([0], dtype=np.uint64),
+            'mags1': np.array([1, 2], dtype=np.uint64)
+        }
+        s = Structure(nodes, members, number_of_strings=2, node_tags=nodes_tags, member_tags=members_tag)
+        s.node_properties.loc[2, 'constraint'] = NodeConstraint()
+        s.node_properties.loc[0, 'constraint'] = NodeConstraint(np.array(([[1, 1, 0]])))
+
+        # print(s.node_properties.loc[2, 'constraint'])
+        # print(s.node_properties.loc[2, 'constraint'].__class__)
+        # print(s.node_properties.loc[0, 'constraint'])
+        # print(s.node_properties.loc[0, 'constraint'].__class__)
+
+        R, T = NodeConstraint.node_constraint(s.nodes, s.node_properties['constraint'])
+        self.assertEqual(R.shape, (4, 15))
+        self.assertEqual(T.shape, (15, 11))
 
 
 if __name__ == '__main__':

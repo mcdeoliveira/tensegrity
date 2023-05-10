@@ -10,10 +10,15 @@ import pandas as pd
 import scipy
 
 from tensegrity import optim
+from tensegrity.stiffness import Stiffness, NodeConstraint
 
 
-@dataclass
 class Property:
+    """
+    Base class for storing properties
+
+    Derived classes should implement ``dataclass`` from ``dataclasses``
+    """
 
     @classmethod
     def to_dataframe(cls: Type['Property'], data: Union[list, tuple] = tuple()) -> pd.DataFrame:
@@ -41,6 +46,7 @@ class Structure:
         """
         radius: float = 0.002
         visible: bool = True
+        constraint: object = None
         facecolor: object = (0, 0.4470, 0.7410)
         edgecolor: object = (0, 0.4470, 0.7410)
 
@@ -106,6 +112,14 @@ class Structure:
 
         # add members
         self.add_members(members, number_of_strings, member_tags)
+
+    def __repr__(self) -> str:
+        """
+        :return: short description of structure as a string
+        """
+        return "Structure " + (f" labeled '{self.label}'" if self.label else '') + \
+            f"with {self.get_number_of_members_by_tag('bar')} bars " \
+            f"and {self.get_number_of_members_by_tag('string')} strings"
 
     def copy(self) -> 'Structure':
         """
@@ -470,6 +484,15 @@ class Structure:
             return reduce(lambda a1, a2: np.intersect1d(a1, a2, assume_unique=True),
                           [v for k, v in self.member_tags.items() if k in tags])
 
+    def get_number_of_members_by_tag(self, tag: str) -> int:
+        """
+        Return the number of members with tag ``tag``
+
+        :param tag: the tags
+        :return: the number of members
+        """
+        return len(self.member_tags.get(tag, []))
+
     def delete_member_tag(self, tag: str) -> None:
         """
         Delete member tag ``tag``
@@ -808,11 +831,11 @@ class Structure:
 
         in which:
 
-        - :math:`A`: in a matrix representing the element vectors
+        - :math:`A`: is a matrix representing the element vectors
         - :math:`f`: is the vector of external forces
         - :math:`\\lambda`: is the vector of resulting force coefficients
 
-        If the ith element is a string then
+        If the :math:`i` th element is a string then
 
         .. math::
             x_i \\geq 0
@@ -826,7 +849,7 @@ class Structure:
         then the equilibrium is shought satisfying the constraints
 
         .. math::
-            x_0 = x_1 = x_3, \qquad x_2 = x_4
+            x_0 = x_1 = x_3, \\qquad x_2 = x_4
 
         :param force: a 3 x n array of external forces; or zero if `None`
         :param lambda_bar: the normalizing factor
@@ -930,7 +953,7 @@ class Structure:
         # assign lambda
         self.member_properties['lambda_'] = lambda_
 
-    def stiffness(self, epsilon: float = 1e-6, storage: str = 'sparse'):
+    def stiffness(self, epsilon: float = 1e-6, storage: str = 'sparse', apply_rigid_body_constraint: bool = False):
         """
         Computes
 
@@ -939,13 +962,13 @@ class Structure:
         - `K`: stiffness matrix (3 n x 3 n)
         - `M`: mass matrix (n x 1)
 
-        for the current ``Structure``
-
-        See also :class:`tensegrity.stiffness.Stiffness`
+        for the current ``Structure``. The mass and stiffness matrices are returned in the form of an object of the
+        class :class:`tensegrity.stiffness.Stiffness`
 
         :param epsilon: numerical accuracy
         :param storage: if ``sparse`` stores the resulting stiffeness and mass matrices in sparse csr format
-        :return: tuple (`v`, `F`, `K`, `M`)
+        :param apply_rigid_body_constraint: if ``True`` ignore node constraints and apply 3D rigid body constraints
+        :return: tuple (`S`, `F`, `v`)
         """
 
         number_of_nodes = self.get_number_of_nodes()
@@ -1027,4 +1050,11 @@ class Structure:
         if sum_of_forces > epsilon:
             warnings.warn(f'Structure::stiffness: force balance not satisfied, sum of forces = {sum_of_forces}')
 
-        return v, F, K, M
+        # Build stiffness object
+        S = Stiffness(K, M)
+        if apply_rigid_body_constraint:
+            # apply rigid body constraints
+            S.apply_constraint(*NodeConstraint.rigid_body_constraint(self.nodes))
+            # TODO: warn if there are node constraints
+
+        return S, F, v

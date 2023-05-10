@@ -8,12 +8,30 @@ from tensegrity.structure import Structure
 
 
 class Plotter:
+    """
+    Base class for structure plotters
+    """
 
-    def plot(self, s: Union[Structure, Sequence[Structure]], **kwargs):
+    def plot(self, s: Union[Structure, Sequence[Structure]], **kwargs) -> None:
+        """
+        Plot structure
+
+        :param s: the structure or sequence of structures
+        :param \\**kwargs: additional keyword arguments
+        """
         pass
 
     @staticmethod
-    def unit_cylinder(n: int = 10, radius: float = 1, height: float = 1):
+    def unit_cylinder(n: int = 10, radius: float = 1, height: float = 1) \
+            -> tuple[npt.NDArray, npt.NDArray, npt.NDArray]:
+        """
+        Return xyz grid points for solid cylinder centered at the origin
+
+        :param n: number of sides
+        :param radius: radius of cylinder
+        :param height: height of cylinder
+        :return: tuple with x, y, and z points
+        """
         z = np.linspace(0, height, 2)
         theta = np.linspace(0, 2 * np.pi, n)
         theta_grid, z_grid = np.meshgrid(theta, z)
@@ -23,8 +41,18 @@ class Plotter:
 
     @staticmethod
     def cylinder(node1: npt.NDArray, node2: npt.NDArray,
-                 volume: float = 0., radius: float = 0.01, n: int = 12) -> Tuple[npt.NDArray, npt.NDArray, npt.NDArray]:
+                 volume: float = 0., radius: float = 0.01, n: int = 12) \
+            -> Tuple[npt.NDArray, npt.NDArray, npt.NDArray]:
+        """
+        Return xyz grid points for cylinder with center aligned with the vector defined by ``node1`` and ``node2``
 
+        :param node1: center of the base of the cylinder
+        :param node2: center of the top of the cylinder
+        :param volume: volume of the cylinder, used to set the radius if positive
+        :param radius: radius of the cylinder, ignore if volume is positive
+        :param n: number of sides
+        :return: tuple with x, y, and z points
+        """
         # rod vector length
         rod = node2 - node1
         length = np.linalg.norm(rod)

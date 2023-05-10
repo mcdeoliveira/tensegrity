@@ -1,3 +1,5 @@
+from typing import Literal
+
 import numpy as np
 
 from .structure import Structure
@@ -5,10 +7,34 @@ from .utils import rotation_2d
 
 
 class Prism(Structure):
+    """
+    Constructs a Snelson prism with ``p`` bars
+
+    :param p: number of bars
+    :param top_radius: the top radius
+    :param bottom_radius: the bottom radius
+    :param height: the radius of the prism
+    :param label: the structure label
+    :param calculate_equilibrium: if ``True`` calculates equilibrium
+    :param equilibrium_method: choice of method for computing equilibrium
+    :param \\**kwargs: See below
+
+    :Keyword Arguments:
+        * **bar** (``bool``) --
+          if ``True`` add *bars* (default=True)
+        * **bottom** (``bool``) --
+          if ``True`` add *bottom strings* (default=True)
+        * **top** (``bool``) --
+          if ``True`` add *top strings* (default=True)
+        * **vertical** (``bool``) --
+          if ``True`` add *vertical strings* (default=True)
+        * **diagonal** (``bool``) --
+          if ``True`` add *diagonal strings* (default=False)
+    """
 
     def __init__(self, p: int = 3,
                  top_radius: float = 1, bottom_radius: float = 1, height: float = 1,
-                 label: str = None, calculate_equilibrium=True, equilibrium_method='analytic',
+                 label: str = None, calculate_equilibrium=True, equilibrium_method=Literal['analytic', 'numeric'],
                  **kwargs):
 
         # proper size

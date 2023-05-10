@@ -62,12 +62,12 @@ def qp(n, m, Q, c, A, blo, bup, xlo, xup, **kwargs):
 
         else:
 
-            # constraint upper bounds
+            # a upper bounds
             if bup is not None:
                 isconstrained = np.logical_not(np.isinf(bup))
                 constraints.append(A[isconstrained, :] @ x <= bup[isconstrained])
 
-            # constraint lower bounds
+            # a lower bounds
             if blo is not None:
                 isconstrained = np.logical_not(np.isneginf(blo))
                 constraints.append(A[isconstrained, :] @ x >= blo[isconstrained])

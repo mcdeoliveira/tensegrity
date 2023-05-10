@@ -7,6 +7,12 @@ from vispy import scene as vispyscene
 
 
 class VisPyPlotter(Plotter):
+    """
+    VisPy based structure plotter
+
+    :param camera: dict with camera settings
+    :param scene: dict with vispy scene settings
+    """
 
     defaults = {
         'plot_nodes': True,
@@ -41,6 +47,9 @@ class VisPyPlotter(Plotter):
         self.view.camera = vispyscene.cameras.ArcballCamera(**camera_kwargs)
 
     def get_canvas(self):
+        """
+        :return: vispy canvas 
+        """
         return self.canvas
 
     def plot(self, s: Union[Structure, Sequence[Structure]], **kwargs):

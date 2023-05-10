@@ -7,32 +7,17 @@ Welcome to tensegrity's documentation!
 ======================================
 
 .. toctree::
-   :maxdepth: 4
-   :caption: Contents:
+   :maxdepth: 2
+   :caption: User Guide
 
-Get started
-===========
+   usage/installation
+   usage/quickstart
 
-Classes
-=======
+.. toctree::
+   :maxdepth: 3
+   :caption: Reference
 
-Structure
----------
-
-.. autoclass:: tensegrity.structure.Structure
-   :members:
-
-Property
---------
-
-.. autoclass:: tensegrity.structure.Property
-   :members:
-
-Stiffness
----------
-
-.. autoclass:: tensegrity.stiffness.Stiffness
-   :members:
+   usage/modules
 
 Indices and tables
 ==================
