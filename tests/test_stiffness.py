@@ -19,7 +19,7 @@ class TestStiffness(unittest.TestCase):
         # 6 rigid body nodes + 1 soft node
         self.assertEqual(np.count_nonzero(d < 1e7), 7)
 
-    def test_rigid_body(self):
+    def test_rigid_body_1(self):
         s = Prism(3)
         # calculate stiffness
         S, F, v = s.stiffness(apply_rigid_body_constraint=True)
@@ -122,6 +122,42 @@ class TestStiffness(unittest.TestCase):
         self.assertTrue(np.linalg.norm((Rs @ Ts).toarray()) < 1e-6)
         self.assertTrue(np.linalg.norm(Rs @ Rs.transpose() - np.eye(4)) < 1e-6)
         self.assertTrue(np.linalg.norm(Ts.transpose() @ Ts - np.eye(11)) < 1e-6)
+
+    def test_rigid_body_2(self):
+
+        nodes = np.matrix([[0, 0, 0], [1, 0, 0], [0, 1, 0]]).transpose()
+        constraints = NodeConstraint.rigid_body_three_point_constraint(nodes)
+        self.assertEqual(constraints[0].dof, 0)
+        self.assertEqual(constraints[1].dof, 1)
+        np.testing.assert_allclose(constraints[1].normal, np.array([[0, 0, -1], [0, 1, 0]]))
+        self.assertEqual(constraints[2].dof, 2)
+        np.testing.assert_allclose(constraints[2].normal, np.array([[0, 0, -1]]))
+
+        R, T = NodeConstraint.node_constraint(nodes, constraints, storage='full')
+        self.assertEqual(R.shape, (6, 9))
+        self.assertEqual(T.shape, (9, 3))
+
+        Rs, Ts = NodeConstraint.node_constraint(nodes, constraints)
+        self.assertEqual(Rs.shape, (6, 9))
+        self.assertEqual(Ts.shape, (9, 3))
+
+        np.testing.assert_equal(R, Rs.toarray())
+        np.testing.assert_equal(T, Ts.toarray())
+
+    def test_rigid_body_3(self):
+
+        # create 3 prism
+        s = Prism(3)
+        # set rigid body constraint on 3 bottom nodes
+        s.node_properties.loc[:2, 'constraint'] = NodeConstraint.rigid_body_three_point_constraint(s.nodes[:, :3])
+        # calculate stiffness
+        S, F, v = s.stiffness()
+        # calculate eigenvalues
+        d = S.eigs(k=6)[0]
+        # no rigid body nodes
+        self.assertEqual(np.count_nonzero(d < 1e-3), 0)
+        # 1 soft node
+        self.assertEqual(np.count_nonzero(d < 1e6), 1)
 
 
 if __name__ == '__main__':

@@ -1051,10 +1051,19 @@ class Structure:
             warnings.warn(f'Structure::stiffness: force balance not satisfied, sum of forces = {sum_of_forces}')
 
         # Build stiffness object
-        S = Stiffness(K, M)
-        if apply_rigid_body_constraint:
-            # apply rigid body constraints
-            S.apply_constraint(*NodeConstraint.rigid_body_constraint(self.nodes))
-            # TODO: warn if there are node constraints
+        stiffness = Stiffness(K, M)
 
-        return S, F, v
+        # node constraints
+        constraints = self.node_properties['constraint']
+        has_constraints = constraints.isna().sum() < self.get_number_of_nodes()
+        if apply_rigid_body_constraint:
+            # warn if constrained
+            if has_constraints:
+                warnings.warn('node constraints ignored in favor of rigid body constraints')
+            # apply rigid body constraints
+            stiffness.apply_constraint(*NodeConstraint.rigid_body_constraint(self.nodes))
+        elif has_constraints:
+            # apply node constraints
+            stiffness.apply_constraint(*NodeConstraint.node_constraint(self.nodes, constraints))
+
+        return stiffness, F, v

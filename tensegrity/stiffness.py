@@ -4,7 +4,7 @@ import numpy as np
 import numpy.typing as npt
 import scipy
 
-from tensegrity.utils import orthogonalize
+from tensegrity.utils import orthogonalize, norm
 
 
 class NodeConstraint:
@@ -84,7 +84,7 @@ class NodeConstraint:
                     data_t[3*kk:3*kk+3*dofj] = np.eye(dofj).flatten(order='C')
                     kk += dofj
                 else:
-                    # add to a
+                    # add to normal
                     nocj = 3-c.dof
                     row_col_r[0, 3*jj:3*jj+3*nocj] = np.kron(np.arange(jj, jj+nocj), np.ones((3,)))      # row
                     row_col_r[1, 3*jj:3*jj+3*nocj] = np.kron(np.ones((nocj,)), np.arange(3*i, 3*(i+1)))  # col
@@ -92,10 +92,11 @@ class NodeConstraint:
                     jj += nocj
                     if c.dof:
                         # add to basis
-                        row_col_t[0, 3*kk:3*kk+3*c.dof] = np.kron(np.arange(3*i, 3*(i+1)), np.ones((c.dof,)))  # row
-                        row_col_t[1, 3*kk:3*kk+3*c.dof] = np.kron(np.arange(kk, kk+c.dof), np.ones((3,)))      # col
-                        data_t[3*kk:3*kk+3*c.dof] = c.basis.flatten(order='C')
-                        kk += c.dof
+                        dofj = c.dof
+                        row_col_t[0, 3*kk:3*kk+3*dofj] = np.kron(np.arange(3*i, 3*(i+1)), np.ones((dofj,)))  # row
+                        row_col_t[1, 3*kk:3*kk+3*dofj] = np.kron(np.ones((3,)), np.arange(kk, kk+dofj))      # col
+                        data_t[3*kk:3*kk+3*dofj] = c.basis.flatten(order='C')
+                        kk += dofj
             R = scipy.sparse.coo_matrix((data_r, row_col_r),
                                         shape=(noc, 3*m)).tocsr()
             T = scipy.sparse.coo_matrix((data_t, row_col_t),
@@ -107,7 +108,7 @@ class NodeConstraint:
             for i, c in enumerate(constraints):
                 if c is None:
                     # add identity to basis
-                    T[3 * i:3 * (i + 1), kk:kk+3] = np.eye(3)
+                    T[3*i:3*(i+1), kk:kk+3] = np.eye(3)
                     kk += 3
                 else:
                     # add to a
@@ -120,6 +121,42 @@ class NodeConstraint:
                         kk += c.dof
 
         return R, T
+
+    @staticmethod
+    def rigid_body_three_point_constraint(nodes: npt.NDArray, epsilon: float = 1e-8) \
+            -> Tuple['NodeConstraint', 'NodeConstraint', 'NodeConstraint']:
+        """
+        Return three constraints on three given nodes to prevent rigid motion.
+
+        :param nodes: 3 x 3 array of nodes (column oriented)
+        :param epsilon: accuracy to assess co-linearity
+        :return: tuple with 3 node constraints
+
+        **Notes:**
+
+        1. The constraints are as follows:
+           - Node 0 is fixed
+           - Node 1 is allowed to move in the line 0-1
+           - Node 2 is allowed to move in the plane 0-1-2
+        """
+        assert nodes.shape[0] == 3 and nodes.shape[1] == 3, '3 nodes should be provided'
+
+        # determine vector normal to plane
+        v10 = (nodes[:, 1] - nodes[:, 0]).flatten()
+        v20 = (nodes[:, 2] - nodes[:, 0]).flatten()
+        v012p = np.cross(v10, v20)
+
+        if np.linalg.norm(v012p) < epsilon:
+            raise Exception('the three given points do not form a plane')
+
+        # determine normal to vp and v10
+        v10p = np.cross(v10, v012p)
+
+        # constraints are:
+        # - node 0 to be fixed,
+        # - node 1 to be in line from 0 to 1,
+        # - node 2 to be in the plane
+        return NodeConstraint(), NodeConstraint(np.vstack((v012p, v10p))), NodeConstraint(v012p.reshape((1, 3)))
 
     @staticmethod
     def rigid_body_constraint(nodes: npt.NDArray, epsilon: float = 1e-8) -> Tuple[npt.NDArray, npt.NDArray]:
@@ -281,9 +318,9 @@ class Stiffness:
                 rank, r, t = orthogonalize(R.transpose(), mode='complete', epsilon=epsilon)
             else:
                 # test orthogonality
-                assert scipy.linalg.norm(R @ T) < epsilon, 'R and T must be orthogonal'
-                assert scipy.linalg.norm(R @ R.transpose() - np.eye(R.shape[0])) < epsilon, 'R must be unitary'
-                assert scipy.linalg.norm(T.transpose() @ T - np.eye(T.shape[1])) < epsilon, 'T must be unitary'
+                assert norm(R @ T) < epsilon, 'R and T must be orthogonal'
+                assert norm(R @ R.transpose() - scipy.sparse.eye(R.shape[0])) < epsilon, 'R must be unitary'
+                assert norm(T.transpose() @ T - scipy.sparse.eye(T.shape[1])) < epsilon, 'T must be unitary'
                 r, t = R, T
 
             # apply constraint

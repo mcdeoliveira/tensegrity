@@ -91,3 +91,11 @@ def orthogonalize(a: npt.NDArray, epsilon: float = 1e-8, mode: Literal['reduced'
         return rank, q[:, :rank], q[:, rank:]
     else:
         return rank, q[:, :rank]
+
+
+def norm(a: Union[npt.NDArray, scipy.sparse.csr_matrix]) -> float:
+    """
+    :param a: the array
+    :return: the 2-norm of the array
+    """
+    return np.linalg.norm(a.data) if scipy.sparse.issparse(a) else np.linalg.norm(a)
