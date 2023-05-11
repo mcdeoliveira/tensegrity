@@ -5,8 +5,10 @@ tnsgrt
 Installation
 ------------
 
-.. code-block::
+Install with pip by typing::
+
     pip install tnsgrt
+
 
 Documentation
 -------------
