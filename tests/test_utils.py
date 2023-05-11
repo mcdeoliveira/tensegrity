@@ -2,7 +2,7 @@ import unittest
 
 import numpy as np
 
-from tensegrity.utils import rotation_2d, rotation_3d
+from tnsgrt.utils import rotation_2d, rotation_3d
 
 
 class TestUtils(unittest.TestCase):

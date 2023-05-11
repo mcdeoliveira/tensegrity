@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.abspath(path))
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-project = 'tensegrity'
+project = 'tnsgrt'
 copyright = '2023, Mauricio de Oliveira'
 author = 'Mauricio de Oliveira'
 

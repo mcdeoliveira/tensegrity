@@ -4,7 +4,7 @@ import itertools
 from parameterized import parameterized
 import numpy as np
 
-from tensegrity.prism import Prism
+from tnsgrt.prism import Prism
 
 
 class TestSnelson(unittest.TestCase):

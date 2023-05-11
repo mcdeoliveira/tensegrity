@@ -16,10 +16,10 @@ Hello World
 
 Try the following code::
 
-    from tensegrity.prism import Prism
+    from tnsgrt.prism import Prism
     s = Prism()
 
-The object ``s`` is a :class:`tensegrity.structure.Structure` representing a **Snelson Tensegrity Prism** with three
+The object ``s`` is a :class:`tnsgrt.structure.Structure` representing a **Snelson Tensegrity Prism** with three
 bars and nine strings such as the one in the following figure:
 
 .. image:: /images/snelson.png
@@ -31,9 +31,9 @@ The structure can be visualized using `matplotlib <https://matplotlib.org>`_::
     # add your favorite matplotlib magic below
     %matplotlib widget
 
-and :class:`tensegrity.plotter.MatplotlibPlotter`::
+and :class:`tnsgrt.plotter.MatplotlibPlotter`::
 
-    from tensegrity.plotter.matplotlib import MatplotlibPlotter
+    from tnsgrt.plotter.matplotlib import MatplotlibPlotter
 
 to produce a 3D plot like the one in the figure above::
 
@@ -88,8 +88,9 @@ The above prisms can be plotted with VisPy::
 
     from IPython.display import display
     import jupyter_rfb
-    from tensegrity.plotter.vispy import VisPyPlotter
+    from tnsgrt.plotter.vispy import VisPyPlotter
     plotter = VisPyPlotter(scene={'size': (800,200), 'app': 'jupyter_rfb'},
                            camera={'scale_factor': 6, 'center': (4.5,2,0)})
     plotter.plot(prisms)
     plotter.get_canvas()
+

@@ -1,6 +1,6 @@
 from typing import Sequence, Union
 
-from tensegrity.structure import Structure
+from tnsgrt.structure import Structure
 from .plotter import Plotter
 
 from vispy import scene as vispyscene

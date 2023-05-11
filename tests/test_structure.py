@@ -3,8 +3,8 @@ import unittest
 import numpy as np
 import scipy
 
-from tensegrity.stiffness import NodeConstraint, Stiffness
-from tensegrity.structure import Structure
+from tnsgrt.stiffness import NodeConstraint, Stiffness
+from tnsgrt.structure import Structure
 
 
 class TestStructure(unittest.TestCase):

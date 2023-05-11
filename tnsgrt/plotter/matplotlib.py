@@ -5,14 +5,14 @@ import numpy.typing as npt
 import matplotlib.pyplot as plt
 
 from .plotter import Plotter
-from tensegrity.structure import Structure
+from tnsgrt.structure import Structure
 
 
 class MatplotlibPlotter(Plotter):
     """
     Matplotlib based structure plotter
 
-    :param plotter: :class:`tensegrity.plotter.matplotlib.Matplotlib` object
+    :param plotter: :class:`tnsgrt.plotter.matplotlib.Matplotlib` object
     :param fig: :class:`matplotlib.figure` object
     :param ax: :class:`matplotlib.pyplot.axis` object
     """

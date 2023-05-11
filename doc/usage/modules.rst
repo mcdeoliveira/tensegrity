@@ -1,44 +1,44 @@
 Modules
 =======
 
-tensegrity.prism
+tnsgrt.prism
 --------------------
 
-.. autoclass:: tensegrity.prism.Prism
+.. autoclass:: tnsgrt.prism.Prism
    :members:
 
-tensegrity.structure
+tnsgrt.structure
 --------------------
 
-.. autoclass:: tensegrity.structure.Property
+.. autoclass:: tnsgrt.structure.Property
    :members:
 
-.. autoclass:: tensegrity.structure.Structure
+.. autoclass:: tnsgrt.structure.Structure
    :members:
 
-tensegrity.plotter
+tnsgrt.plotter
 ------------------
 
-.. autoclass:: tensegrity.plotter.Plotter
+.. autoclass:: tnsgrt.plotter.Plotter
    :members:
 
-.. autoclass:: tensegrity.plotter.matplotlib.MatplotlibPlotter
+.. autoclass:: tnsgrt.plotter.matplotlib.MatplotlibPlotter
    :members:
 
-.. autoclass:: tensegrity.plotter.vispy.VisPyPlotter
+.. autoclass:: tnsgrt.plotter.vispy.VisPyPlotter
    :members:
 
-tensegrity.stiffness
+tnsgrt.stiffness
 --------------------
 
-.. autoclass:: tensegrity.stiffness.NodeConstraint
+.. autoclass:: tnsgrt.stiffness.NodeConstraint
    :members:
 
-.. autoclass:: tensegrity.stiffness.Stiffness
+.. autoclass:: tnsgrt.stiffness.Stiffness
    :members:
 
-tensegrity.utils
+tnsgrt.utils
 ----------------
 
-.. automodule:: tensegrity.utils
+.. automodule:: tnsgrt.utils
    :members:

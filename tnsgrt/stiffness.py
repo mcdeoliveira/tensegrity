@@ -4,7 +4,7 @@ import numpy as np
 import numpy.typing as npt
 import scipy
 
-from tensegrity.utils import orthogonalize, norm
+from tnsgrt.utils import orthogonalize, norm
 
 
 class NodeConstraint:
@@ -26,7 +26,7 @@ class NodeConstraint:
        .. math::
            R \\, x = 0, \\quad x = T \\, y, \\quad R R^T = I, \\quad T^T T = I
 
-       is constructed using :func:`tensegrity.utils.orthogonalize`
+       is constructed using :func:`tnsgrt.utils.orthogonalize`
     """
 
     def __init__(self, constraint: Optional[npt.NDArray] = None, epsilon: float = 1e-8):
@@ -53,7 +53,7 @@ class NodeConstraint:
         """
         Construct the constraint associated with the given nodes and node constraints
 
-        The resulting tuple is compatible with :meth:`~tensegrity.stiffness.Stiffness.apply_constraint`
+        The resulting tuple is compatible with :meth:`~tnsgrt.stiffness.Stiffness.apply_constraint`
 
         :param nodes: 3 x n array of nodes
         :param constraints: list with n constraints
@@ -163,7 +163,7 @@ class NodeConstraint:
         """
         Construct rigid-body constraint associated with the given nodes
 
-        The resulting tuple is compatible with :meth:`~tensegrity.stiffness.Stiffness.apply_constraint`
+        The resulting tuple is compatible with :meth:`~tnsgrt.stiffness.Stiffness.apply_constraint`
 
         :param nodes: 3 x n array of nodes
         :param epsilon: precision used to assess numerical rank
@@ -230,7 +230,7 @@ class Stiffness:
        .. math::
            K_x = T^T K T, \\qquad M_x = T^T M T
 
-    3. Use :meth:`tensegrity.stiffness.Stiffness.apply_constraint` to apply constraints to the model
+    3. Use :meth:`tnsgrt.stiffness.Stiffness.apply_constraint` to apply constraints to the model
 
     4. Node constraints are enforced to be orthogonal so that
 

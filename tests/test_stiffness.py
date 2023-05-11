@@ -4,8 +4,8 @@ from typing import Optional
 import numpy as np
 import scipy
 
-from tensegrity.prism import Prism
-from tensegrity.stiffness import Stiffness, NodeConstraint
+from tnsgrt.prism import Prism
+from tnsgrt.stiffness import Stiffness, NodeConstraint
 
 
 class TestStiffness(unittest.TestCase):

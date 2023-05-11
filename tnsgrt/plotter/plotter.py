@@ -4,7 +4,7 @@ import numpy as np
 import numpy.typing as npt
 from scipy.spatial.transform import Rotation
 
-from tensegrity.structure import Structure
+from tnsgrt.structure import Structure
 
 
 class Plotter:

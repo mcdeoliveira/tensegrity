@@ -2,7 +2,7 @@ import warnings
 
 import numpy as np
 
-from tensegrity.structure import Structure
+from tnsgrt.structure import Structure
 
 
 class Michell(Structure):
