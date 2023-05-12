@@ -6,13 +6,31 @@ from tnsgrt.structure import Structure
 
 
 class Michell(Structure):
+    """
+    Constructs a circular Michell truss with ``n`` sides and ``q`` layers
 
-    def __init__(self, n: int = 6, beta: float = np.pi/4, q: int = 4,
-                 label: str = None, **kwargs):
+    :param n: the number of sides
+    :param beta: the angle between the radius and the outermost bar
+    :param q: the number of layers
+    :param \\**kwargs: See below
 
+    :Keyword Arguments:
+        * **spiral** (``bool``) --
+          if ``True`` add *spiral members* (default=True)
+        * **radial** (``bool``) --
+          if ``True`` add *radial members* (default=True)
+        * **outer** (``bool``) --
+          if ``True`` add *outer members* (default=True)
+        * **inner** (``bool``) --
+          if ``True`` add *inner members* (default=True)
+        * **center** (``bool``) --
+          if ``True`` add *center members* (default=False)
+    """
+
+    def __init__(self, n: int = 6, beta: float = np.pi/4, q: int = 4, **kwargs):
         # other options
         options = {
-            'michell': True,
+            'spiral': True,
             'radial': True,
             'outer': True,
             'inner': True,
@@ -42,8 +60,8 @@ class Michell(Structure):
             return n * j + i
 
         members = np.zeros((2, 0))
-        # add michell members
-        if options['michell']:
+        # add spiral members
+        if options['spiral']:
             michell_members = np.zeros((2*n, 2*(q-1)))
             for i in range(n):
                 for j in range(q-1):
@@ -100,7 +118,7 @@ class Michell(Structure):
         # print(members)
 
         # remove used options
-        kwargs = {k: v for k, v in options.items() if k not in ['michell', 'radial', 'outer', 'inner', 'center']}
+        kwargs = {k: v for k, v in options.items() if k not in ['spiral', 'radial', 'outer', 'inner', 'center']}
 
         # call super
-        super().__init__(nodes, members, label=label, **kwargs)
+        super().__init__(nodes, members, **kwargs)

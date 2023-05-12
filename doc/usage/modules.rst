@@ -7,6 +7,12 @@ tnsgrt.prism
 .. autoclass:: tnsgrt.prism.Prism
    :members:
 
+tnsgrt.michell
+--------------------
+
+.. autoclass:: tnsgrt.michell.Michell
+   :members:
+
 tnsgrt.structure
 --------------------
 

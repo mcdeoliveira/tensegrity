@@ -1,0 +1,34 @@
+[project]
+name = "tnsgrt"
+version = "0.1"
+authors = [
+    { name = "Mauricio C. de Oliveira", email = "mcdeoliveira@duck.com" }
+]
+description = "Python library with support for analysis and design of Tensegrity structures"
+readme = "README.md"
+license = {file = "LICENSE"}
+keywords = ["Tensegrity", "structures", "trusses"]
+
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Other Audience",
+    "Topic :: Scientific/Engineering",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.7",
+]
+
+dependencies = [
+    "numpy",
+    "matplotlib",
+    "pandas",
+    "scipy",
+    "cvxpy",
+    "vispy",
+    "parameterized"
+]
+
+[project.urls]
+"Homepage" = "https://github.com/mcdeoliveira/tensegrity"
+
+[tool.setuptools]
+py-modules = []
