@@ -16,20 +16,31 @@ class Michell(Structure):
     :param \\**kwargs: See below
 
     :Keyword Arguments:
-        * **spiral** (``bool``) --
-          if ``True`` add *spiral members* (default=True)
-        * **radial** (``bool``) --
-          if ``True`` add *radial members* (default=True)
-        * **outer** (``bool``) --
-          if ``True`` add *outer members* (default=True)
-        * **inner** (``bool``) --
-          if ``True`` add *inner members* (default=True)
-        * **center** (``bool``) --
-          if ``True`` add *center members* (default=False)
+        * **spiral** (``bool=True``) --
+          if ``True`` add *spiral members*
+        * **radial** (``bool=True``) --
+          if ``True`` add *radial members*
+        * **outer** (``bool=True``) --
+          if ``True`` add *outer members*
+        * **inner** (``bool=True``) --
+          if ``True`` add *inner members*
+        * **center** (``bool=True``) --
+          if ``True`` add *center members*
 
     **Notes:**
 
-    1. Additional keyword arguments are passed to :class:`tnsgrt.structure.Structure`
+    1. If :math:`\\rho` is equal to ``radius``, then the radii as a function of the layer number `i` is
+
+      .. math::
+           r(i) = \\rho \\, a^i, \\qquad a = \\frac{\\beta}{\\sin(\\beta + \\pi)}
+
+    2. The radii are convergent only if :math:`a < 1`, that is
+
+       .. math::
+          \\beta < \\frac{\\pi}{2} - \\frac{\\pi}{2 n}
+
+       The default :math:`\\beta = \\pi/4` leads to convergent designs for all :math:`n > 2`.
+    3. Additional keyword arguments are passed to :class:`tnsgrt.structure.Structure`
     """
 
     def __init__(self, n: int = 6, beta: float = np.pi/4, q: int = 4, radius: float = 1, **kwargs):

@@ -8,9 +8,9 @@ from tnsgrt.michell import Michell
 
 class TestMichell(unittest.TestCase):
 
-    @parameterized.expand(itertools.product([4, 6, 12], [3, 4, 10, 12]))
-    def test_michell(self, p, q):
-        s = Michell(p, q=q)
+    @parameterized.expand(itertools.product([4, 6, 12], [3, 4, 10, 12], [0.5, 1, 1.5]))
+    def test_michell(self, p, q, radius):
+        s = Michell(p, q=q, radius=radius)
         # print(f'p = {p}, q = {q}')
         self.assertEqual(s.get_number_of_nodes(), p*q+1)
         # self.assertEqual(s.get_number_of_members(), p*(q+1)+2*p)
