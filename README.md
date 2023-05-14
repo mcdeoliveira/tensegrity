@@ -4,11 +4,11 @@ This package contains classes and functions that facilitate the design and analy
 It started as a matlab toolbox many years ago written by Mauricio de Oliveira and Joseph Cessna, which is now been
 ported to Python.
 
-It relies heavily on `numpy <https://numpy.org>`_, `scipy <https://scipy.org>`_, `pandas <https://pandas.org>`_, and
-`cvxpy <https://cvxpy.org>`_ for computations.
+It relies heavily on [numpy](https://numpy.org>), [scipy](https://scipy.org), [pandas](https://pandas.org), and
+[cvxpy](https://cvxpy.org) for computations.
 
-Visualization is supported via `matplotlib <https://matplotlib.org>`_ and
-`vispy <https://vispy.org>`_.
+Visualization is supported via [matplotlib](https://matplotlib.org) and
+[vispy](https://vispy.org).
 
 ## Installation
 
