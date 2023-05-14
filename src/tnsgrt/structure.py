@@ -1,4 +1,3 @@
-import collections
 import warnings
 from dataclasses import dataclass
 from functools import reduce
@@ -10,8 +9,9 @@ import numpy.typing as npt
 import pandas as pd
 import scipy
 
-from tnsgrt import optim, utils
-from tnsgrt.stiffness import Stiffness, NodeConstraint
+from . import utils
+from . import optim
+from .stiffness import Stiffness, NodeConstraint
 
 
 class Property:

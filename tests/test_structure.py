@@ -5,7 +5,7 @@ import pandas as pd
 import scipy
 
 from tnsgrt import utils
-from tnsgrt.stiffness import NodeConstraint, Stiffness
+from tnsgrt.stiffness import NodeConstraint
 from tnsgrt.structure import Structure
 
 

@@ -4,7 +4,7 @@ import numpy as np
 import numpy.typing as npt
 import scipy
 
-from tnsgrt.utils import orthogonalize, norm
+from .utils import orthogonalize, norm
 
 
 class NodeConstraint:
