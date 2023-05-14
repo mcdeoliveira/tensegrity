@@ -25,6 +25,10 @@ class Michell(Structure):
           if ``True`` add *inner members* (default=True)
         * **center** (``bool``) --
           if ``True`` add *center members* (default=False)
+
+    **Notes:**
+
+    1. Additional keyword arguments are passed to :class:`tnsgrt.structure.Structure`
     """
 
     def __init__(self, n: int = 6, beta: float = np.pi/4, q: int = 4, **kwargs):

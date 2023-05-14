@@ -1,7 +1,8 @@
+import collections
 import warnings
 from dataclasses import dataclass
 from functools import reduce
-from typing import Optional, Dict, get_type_hints, Union, List, Sequence, Type, Iterable, Tuple, Set
+from typing import Optional, Dict, get_type_hints, Union, List, Sequence, Type, Iterable, Tuple, Set, Any
 from collections import ChainMap
 
 import numpy as np
@@ -9,7 +10,7 @@ import numpy.typing as npt
 import pandas as pd
 import scipy
 
-from tnsgrt import optim
+from tnsgrt import optim, utils
 from tnsgrt.stiffness import Stiffness, NodeConstraint
 
 
@@ -47,8 +48,8 @@ class Structure:
         radius: float = 0.002
         visible: bool = True
         constraint: object = None
-        facecolor: object = (0, 0.4470, 0.7410)
-        edgecolor: object = (0, 0.4470, 0.7410)
+        facecolor: object = utils.Colors.BLUE.value
+        edgecolor: object = utils.Colors.BLUE.value
 
     node_defaults = {
     }
@@ -63,6 +64,7 @@ class Structure:
         stiffness: float = 0.
         volume: float = 0.
         radius: float = 0.01
+        inner_radius: float = 0
         mass: float = 1.
         rest_length: float = 0.
         # ASTM A36 steel
@@ -77,12 +79,13 @@ class Structure:
 
     member_defaults = {
         'bar': {
-            'facecolor': (0, 0.4470, 0.7410),
-            'edgecolor': (0, 0.4470, 0.7410)
+            'facecolor': utils.Colors.BLUE.value,
+            'edgecolor': utils.Colors.BLUE.value
         },
         'string': {
-            'facecolor': (0.8500, 0.3250, 0.0980),
-            'edgecolor': (0.8500, 0.3250, 0.0980)
+            'facecolor': utils.Colors.ORANGE.value,
+            'edgecolor': utils.Colors.ORANGE.value,
+            'radius': 0.005
         }
     }
 
@@ -215,50 +218,50 @@ class Structure:
 
     def translate(self, v: npt.NDArray) -> 'Structure':
         """
-        Translate all nodes of the ``Structure`` by the 3D vector ``v``
+        Translate all nodes of the ``Structure`` by the 3D vector ``normal``
 
         :param v: the 3D translation vector
         :return: self
         """
-        # `translate(v)` translates nodes of the structure by the 3D vector `v`
-        assert v.shape == (3,), 'v must be a three dimensional vector'
+        # `translate(normal)` translates nodes of the structure by the 3D vector `normal`
+        assert v.shape == (3,), 'normal must be a three dimensional vector'
         self.nodes += v.reshape((3, 1))
         return self
 
     def rotate(self, v: npt.NDArray) -> 'Structure':
         """
-        Rotate all nodes of the ``Structure`` by the 3D vector ``v``
+        Rotate all nodes of the ``Structure`` by the 3D vector ``normal``
 
         :param v: the 3D rotation vector
         :return: self
         """
-        # `rotate(v)` rotates the nodes of the structure around the 3D vector `v`
+        # `rotate(normal)` rotates the nodes of the structure around the 3D vector `normal`
         # the magnitude of the vector equals the rotation angle in radians
-        assert v.shape == (3,), 'v must be a three dimensional vector'
+        assert v.shape == (3,), 'normal must be a three dimensional vector'
         rotation = scipy.spatial.transform.Rotation.from_rotvec(v)
         self.nodes = rotation.apply(self.nodes.transpose()).transpose()
         return self
 
     def reflect(self, v: npt.NDArray, p: Optional[npt.NDArray] = None) -> 'Structure':
         """
-        Reflects the structure about a plane normal to the vector `v`, passing through the point `p`.
+        Reflects the structure about a plane normal to the vector `normal`, passing through the point `p`.
         If no point is given, it defaults to the origin.
 
         :param v: the 3D normal vector
         :param p: the 3D origin vector
         :return: self
         """
-        assert v.shape == (3,), 'v must be a three dimensional vector'
+        assert v.shape == (3,), 'normal must be a three dimensional vector'
 
         if p is not None:
             assert p.shape == (3,), 'p must be a three dimensional vector'
             # translate by p
             self.nodes -= p.reshape((3, 1))
 
-        # normalize v
+        # normalize normal
         length = np.linalg.norm(v)
         if length < 1e-6:
-            warnings.warn('norm of vector v is too small, reflection not performed')
+            warnings.warn('norm of vector normal is too small, reflection not performed')
             return self
 
         # calculate reflection matrix
@@ -620,7 +623,57 @@ class Structure:
         # set tag
         self.node_tags[tag] = np.setdiff1d(self.node_tags[tag], indices)
 
-    def get_member_properties(self, index: Union[int, Sequence[int]], labels: List[str]) -> pd.DataFrame:
+    @staticmethod
+    def _set_dataframe(df: pd.DataFrame, index: Union[int, Sequence[int], slice], labels: Union[str, Sequence[str]],
+                       values: Any, wrap: bool = False, scalar: bool = True) -> None:
+        """
+        Auxiliary set method to wrap values when setting dataframe
+
+        :param df: the dataframe
+        :param index: the row index
+        :param labels: the column label(s)
+        :param values: the values to set to
+        :param wrap: if ``True``, wraps ``value`` in a ``Series`` or ``Dataframe`` before assignment
+        :param scalar: if ``True``, ``value`` is set to an array of len(index)
+
+        **Notes:**
+
+        1. This method is for convenience when assigning objects to dataframes.
+           See `this question <https://stackoverflow.com/questions/48000225/must-have-equal-len-keys-and-value-when-setting-with-an-iterable>`_
+           for details.
+        """
+        if wrap:
+            if isinstance(index, int):
+                idx = index = [index]
+                m = 1
+            else:
+                idx = df.index[index]
+                m = len(idx)
+            if scalar:
+                values = [values] * m
+            if isinstance(labels, str):
+                values = pd.Series(values, index=idx)
+            else:
+                values = pd.DataFrame(values, index=idx)
+        df.loc[index, labels] = values
+
+    def set_member_properties(self, index: Union[int, Sequence[int], slice], labels: Union[str, Sequence[str]],
+                              values: Any, wrap: bool = False, scalar: bool = True) -> None:
+        """
+        Set member properties
+
+        See :meth:`tnsgrt.structure.Structure._set_dataframe`
+
+        :param index: the element index
+        :param labels: the property label(s)
+        :param values: the values to set to
+        :param wrap: if ``True``, wraps ``value`` in a ``Series`` or ``Dataframe`` before assignment
+        :param scalar: if ``True``, ``value`` is set to an array of len(index)
+        """
+        Structure._set_dataframe(self.member_properties, index, labels, values, wrap, scalar)
+
+    def get_member_properties(self, index: Union[int, Sequence[int], slice], labels: Union[str, List[str]])\
+            -> pd.DataFrame:
         """
         Retrieve member properties
 
@@ -629,6 +682,32 @@ class Structure:
         :return: datafrome with the selected properties
         """
         return self.member_properties.loc[index, labels]
+
+    def set_node_properties(self, index: Union[int, Sequence[int], slice], labels: Union[str, Sequence[str]],
+                            values: Any, wrap: bool = False, scalar: bool = True) -> None:
+        """
+        Set node properties
+
+        See :meth:`tnsgrt.structure.Structure._set_dataframe`
+
+        :param index: the element index
+        :param labels: the property label(s)
+        :param values: the values to set to
+        :param wrap: if ``True``, wraps ``value`` in a ``Series`` or ``Dataframe`` before assignment
+        :param scalar: if ``True``, ``value`` is set to an array of len(index)
+        """
+        Structure._set_dataframe(self.node_properties, index, labels, values, wrap, scalar)
+
+    def get_node_properties(self, index: Union[int, Sequence[int], slice], labels: Union[str, List[str]])\
+            -> pd.DataFrame:
+        """
+        Retrieve node properties
+
+        :param index: the node index
+        :param labels: the node property labels
+        :return: datafrome with the selected properties
+        """
+        return self.node_properties.loc[index, labels]
 
     def get_member_vectors(self) -> npt.NDArray[np.float_]:
         """
@@ -664,7 +743,8 @@ class Structure:
 
         If property_name is
 
-        - 'stiffness': calculate ``stiffness`` and ``rest_length`` based on ``modulus``, ``radius`` and ``lambda_``
+        - 'stiffness': calculate ``stiffness`` and ``rest_length`` based on ``modulus``, ``radius``, ``inner_radius``
+           and ``lambda_``
         - 'mass': calculate ``mass`` and ``volume`` based on ``radius`` and ``density``
         - 'force': calculate ``force`` based on ``lambda_``
 
@@ -677,7 +757,7 @@ class Structure:
             if property_name == 'stiffness':
                 member_length = self.get_member_length()
                 modulus_times_area = self.member_properties['modulus'].values * np.pi * \
-                                     (self.member_properties['radius'].values ** 2)
+                    (self.member_properties['radius'].values ** 2 - self.member_properties['inner_radius'].values ** 2)
                 stiffness = modulus_times_area / member_length
                 if np.any(stiffness < 0):
                     raise Exception(f'Structure::update_member_property: negative stiffness computed')
@@ -690,7 +770,8 @@ class Structure:
             # update mass and volume
             elif property_name == 'mass':
                 member_length = self.get_member_length()
-                volume = np.pi * self.member_properties['radius'] ** 2 * member_length
+                volume = np.pi * (self.member_properties['radius'] ** 2 -
+                                  self.member_properties['inner_radius'].values ** 2) * member_length
                 if np.any(volume < 0):
                     raise Exception(f'Structure::update_member_property: negative volume computed')
                 mass = volume * self.member_properties['density']
@@ -876,20 +957,20 @@ class Structure:
             for i in self.member_tags['string']:
 
                 ii = 3 * int(self.members[0, i])
-                Aeq[ii:ii+3, i] = member_vectors[:, i]
+                Aeq[ii:ii+3, i] = -member_vectors[:, i]
 
                 jj = 3 * int(self.members[1, i])
-                Aeq[jj:jj+3, i] = -member_vectors[:, i]
+                Aeq[jj:jj+3, i] = member_vectors[:, i]
 
         # bar coefficient
         if number_of_bars:
             for i in self.member_tags['bar']:
 
                 ii = 3 * int(self.members[0, i])
-                Aeq[ii:ii+3, i] = -member_vectors[:, i]
+                Aeq[ii:ii+3, i] = member_vectors[:, i]
 
                 jj = 3 * int(self.members[1, i])
-                Aeq[jj:jj+3, i] = member_vectors[:, i]
+                Aeq[jj:jj+3, i] = -member_vectors[:, i]
 
         A = Aeq
         m = 3 * number_of_nodes
@@ -900,7 +981,7 @@ class Structure:
             blo = bup = np.hstack((np.zeros((3 * number_of_nodes,)), 1))
         else:
             beq = np.array(force)
-            assert np.all(beq.shape == [3, number_of_nodes]), 'force must be a 3 x n matrix'
+            assert np.all(beq.shape == (3, number_of_nodes)), 'force must be a 3 x n matrix'
             blo = bup = beq.flatten(order='F')
 
         # For equilibrium: Aeq x = beq
@@ -953,11 +1034,16 @@ class Structure:
         # assign lambda
         self.member_properties['lambda_'] = lambda_
 
-    def stiffness(self, epsilon: float = 1e-6, storage: str = 'sparse', apply_rigid_body_constraint: bool = False):
+        # update force
+        self.update_member_properties('force')
+
+    def stiffness(self, epsilon: float = 1e-6, storage: str = 'sparse',
+                  apply_rigid_body_constraint: bool = False,
+                  apply_planar_constraint: bool = False):
         """
         Computes
 
-        - `v`: potential energy (1 x 1)
+        - `normal`: potential energy (1 x 1)
         - `F`: force vectors (3 x n)
         - `K`: stiffness matrix (3 n x 3 n)
         - `M`: mass matrix (n x 1)
@@ -967,8 +1053,9 @@ class Structure:
 
         :param epsilon: numerical accuracy
         :param storage: if ``sparse`` stores the resulting stiffeness and mass matrices in sparse csr format
-        :param apply_rigid_body_constraint: if ``True`` ignore node constraints and apply 3D rigid body constraints
-        :return: tuple (`S`, `F`, `v`)
+        :param apply_rigid_body_constraint: if ``True`` apply 3D rigid body constraints
+        :param apply_planar_constraint: if ``True`` apply 2D constraints
+        :return: tuple (`S`, `F`, `normal`)
         """
 
         number_of_nodes = self.get_number_of_nodes()
@@ -978,6 +1065,10 @@ class Structure:
 
         assert number_of_members == number_of_bars + number_of_strings, \
             'number of members is not equal to the sum of number of bars and strings'
+
+        if number_of_nodes <= 12 and storage == 'sparse':
+            storage = 'dense'
+            warnings.warn("number of nodes is small; storage set to 'dense'")
 
         # member vectors
         member_vectors = self.get_member_vectors()
@@ -1056,14 +1147,14 @@ class Structure:
         # node constraints
         constraints = self.node_properties['constraint']
         has_constraints = constraints.isna().sum() < self.get_number_of_nodes()
-        if apply_rigid_body_constraint:
-            # warn if constrained
-            if has_constraints:
-                warnings.warn('node constraints ignored in favor of rigid body constraints')
-            # apply rigid body constraints
-            stiffness.apply_constraint(*NodeConstraint.rigid_body_constraint(self.nodes))
-        elif has_constraints:
+        if has_constraints:
             # apply node constraints
             stiffness.apply_constraint(*NodeConstraint.node_constraint(self.nodes, constraints))
+        if apply_rigid_body_constraint:
+            # apply rigid body constraints
+            stiffness.apply_constraint(*NodeConstraint.rigid_body_constraint(self.nodes), local=False)
+        if apply_planar_constraint:
+            # apply planar constraints
+            stiffness.apply_constraint(*NodeConstraint.planar_constraint(self.nodes), local=False)
 
         return stiffness, F, v

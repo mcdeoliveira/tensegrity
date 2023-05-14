@@ -1,8 +1,10 @@
 import unittest
 
 import numpy as np
+import pandas as pd
 import scipy
 
+from tnsgrt import utils
 from tnsgrt.stiffness import NodeConstraint, Stiffness
 from tnsgrt.structure import Structure
 
@@ -86,6 +88,7 @@ class TestStructure(unittest.TestCase):
         self.assertEqual(s.get_number_of_members(), 3)
         self.assertEqual(len(s.member_properties), 3)
 
+        member_defaults = Structure.member_defaults.copy()
         Structure.member_defaults['vertical'] = {'linewidth': 1001, 'volume': 2}
         s = Structure(nodes, members,
                       member_tags={
@@ -126,6 +129,73 @@ class TestStructure(unittest.TestCase):
         self.assertEqual(s.get_member_properties([1, 2], ['volume', 'mass']).to_dict('index'),
                          {1: {'volume': 0., 'mass': 1.}, 2: {'volume': 2., 'mass': 1.}})
         self.assertEqual(s.get_member_properties(2, ['volume', 'mass']).to_dict(), {'volume': 2., 'mass': 1.})
+        Structure.member_defaults = member_defaults
+
+    def test_get_set_member_properties(self):
+
+        nodes = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
+        members = np.array([[0, 1, 2], [1, 2, 0]])
+        s = Structure(nodes, members,
+                      member_tags={
+                          'bar': np.arange(1, 3, dtype=np.uint64),
+                          'string': np.arange(0, 1, dtype=np.uint64),
+                          'vertical': np.arange(2, 3, dtype=np.uint64)
+                      },
+                      node_tags={
+                          'bottom': np.array([0, 1], dtype=np.uint64),
+                          'top': np.array([2], dtype=np.uint64)
+                      })
+
+        properties = s.get_member_properties([1, 2], 'volume')
+        self.assertIsInstance(properties, pd.Series)
+        self.assertEqual(len(properties), 2)
+        np.testing.assert_array_equal(properties.values, [0, 0])
+
+        properties = s.get_member_properties(slice(None), 'volume')
+        self.assertIsInstance(properties, pd.Series)
+        self.assertEqual(len(properties), 3)
+
+        properties = s.get_member_properties([1, 2], 'facecolor')
+        self.assertIsInstance(properties, pd.Series)
+        self.assertEqual(len(properties), 2)
+
+        properties = s.get_member_properties(slice(None), 'facecolor')
+        self.assertIsInstance(properties, pd.Series)
+        self.assertEqual(len(properties), 3)
+
+        properties = s.get_member_properties([1, 2], ['volume', 'facecolor'])
+        self.assertIsInstance(properties, pd.DataFrame)
+        self.assertEqual(len(properties), 2)
+
+        properties = s.get_member_properties(slice(None), ['volume', 'facecolor'])
+        self.assertIsInstance(properties, pd.DataFrame)
+        self.assertEqual(len(properties), 3)
+
+        s.set_member_properties(2, 'volume', 3)
+        np.testing.assert_array_equal(s.member_properties['volume'].values, [0, 0, 3])
+
+        s.set_member_properties([1, 2], 'volume', [1, 2])
+        np.testing.assert_array_equal(s.member_properties['volume'].values, [0, 1, 2])
+
+        s.set_member_properties([1, 2], 'volume', 3)
+        np.testing.assert_array_equal(s.member_properties['volume'].values, [0, 3, 3])
+
+        s.set_member_properties([1, 2], 'volume', 1, wrap=True)
+        np.testing.assert_array_equal(s.member_properties['volume'].values, [0, 1, 1])
+
+        s.set_member_properties(2, 'facecolor', utils.Colors.BROWN.value, wrap=True)
+        self.assertEqual(s.member_properties['facecolor'].tolist(),
+                         [utils.Colors.ORANGE.value, utils.Colors.BLUE.value, utils.Colors.BROWN.value])
+
+        s.set_member_properties([1, 2], 'facecolor', utils.Colors.GREEN.value, wrap=True)
+        self.assertEqual(s.member_properties['facecolor'].tolist(),
+                         [utils.Colors.ORANGE.value, utils.Colors.GREEN.value, utils.Colors.GREEN.value])
+
+        s.set_member_properties([1, 2], 'facecolor', [utils.Colors.BLUE.value, utils.Colors.ORANGE.value],
+                                wrap=True, scalar=False)
+        self.assertEqual(s.member_properties['facecolor'].tolist(),
+                         [utils.Colors.ORANGE.value, utils.Colors.BLUE.value, utils.Colors.ORANGE.value])
+
 
     def test_add_members_and_add_nodes(self):
 
@@ -163,6 +233,7 @@ class TestStructure(unittest.TestCase):
 
         nodes = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
         members = np.array([[0, 1, 2], [1, 2, 0]])
+        member_defaults = Structure.member_defaults.copy()
         Structure.member_defaults['vertical'] = {'linewidth': 1001, 'volume': 2}
         s = Structure(nodes, members,
                       member_tags={
@@ -236,6 +307,8 @@ class TestStructure(unittest.TestCase):
         self.assertEqual(copy.get_member_properties([1, 2], ['volume', 'mass']).to_dict('index'),
                          {1: {'volume': 0., 'mass': 1.}, 2: {'volume': 2., 'mass': 1.}})
         self.assertEqual(copy.get_member_properties(2, ['volume', 'mass']).to_dict(), {'volume': 2., 'mass': 1.})
+
+        Structure.member_defaults = member_defaults
 
     def test_merge(self):
 
@@ -607,14 +680,17 @@ class TestStructure(unittest.TestCase):
         lambda_ = np.hstack((np.kron(np.array([-1, -1, 4]), np.ones((3,))), [4]))
         np.testing.assert_allclose(s1.member_properties['lambda_'], lambda_)
 
+        mass = np.hstack((157./200. * np.ones((6,)), 157./200./4 * np.ones((4,))))
         np.testing.assert_allclose(s1.member_properties['mass'] / s1.get_member_length() / np.pi,
-                                   157./200. * np.ones((10,)))
+                                   mass)
 
+        volume = np.hstack((np.ones((6,)), 1/4 * np.ones((4,))))
         np.testing.assert_allclose(10000 * s1.member_properties['volume'] / s1.get_member_length() / np.pi,
-                                   np.ones((10,)))
+                                   volume)
 
         np.testing.assert_allclose(s1.member_properties['stiffness'],
-                                   np.pi * s1.member_properties['modulus'] * s1.member_properties['radius']**2
+                                   np.pi * s1.member_properties['modulus'] * (s1.member_properties['radius']**2 -
+                                                                              s1.member_properties['inner_radius']**2)
                                    / s1.get_member_length())
 
         np.testing.assert_allclose(s1.member_properties['rest_length'],

@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Literal, Optional
 
 import numpy as np
 
@@ -14,36 +14,56 @@ class Prism(Structure):
     :param top_radius: the top radius
     :param bottom_radius: the bottom radius
     :param height: the radius of the prism
-    :param label: the structure label
+    :param alpha: the twist angle
     :param calculate_equilibrium: if ``True`` calculates equilibrium
     :param equilibrium_method: choice of method for computing equilibrium
     :param \\**kwargs: See below
 
     :Keyword Arguments:
-        * **bar** (``bool``) --
-          if ``True`` add *bars* (default=True)
-        * **bottom** (``bool``) --
-          if ``True`` add *bottom strings* (default=True)
-        * **top** (``bool``) --
-          if ``True`` add *top strings* (default=True)
-        * **vertical** (``bool``) --
-          if ``True`` add *vertical strings* (default=True)
-        * **diagonal** (``bool``) --
-          if ``True`` add *diagonal strings* (default=False)
+        * **bar** (``bool=True``) --
+          if ``True`` add *bars*
+        * **bottom** (``bool=True``) --
+          if ``True`` add *bottom strings*
+        * **top** (``bool=True``) --
+          if ``True`` add *top strings*
+        * **vertical** (``bool=True``) --
+          if ``True`` add *vertical strings*
+        * **diagonal** (``bool=False``) --
+          if ``True`` add *diagonal strings*
+
+    **Notes:**
+
+    1. Unloaded equilibrium is possible only if
+
+       .. math::
+          \\frac{\\pi}{2} - \\frac{\\pi}{p} \\leq \\alpha \\leq \\frac{\\pi}{2}
+
+       when both *vertical* and *diagonal* strings are present
+    2. If *diagonal* strings are not present, then unloaded equilibrium is possible only
+       if
+
+       .. math::
+          \\alpha = \\frac{\\pi}{2} - \\frac{\\pi}{p}
+
+       This is the default prism configuration
+    3. If *vertical* strings are not present, then unloaded equilibrium is possible only
+       if
+
+       .. math::
+          \\alpha = \\frac{\\pi}{2}
+    4. Additional keyword arguments are passed to :class:`tnsgrt.structure.Structure`
     """
 
     def __init__(self, p: int = 3,
-                 top_radius: float = 1, bottom_radius: float = 1, height: float = 1,
-                 label: str = None, calculate_equilibrium=True, equilibrium_method=Literal['analytic', 'numeric'],
+                 top_radius: float = 1, bottom_radius: float = 1, height: float = 1, alpha: Optional[float] = None,
+                 calculate_equilibrium=True, equilibrium_method=Literal['analytic', 'numeric'],
                  **kwargs):
 
         # proper size
         assert p >= 3, 'p must be greater or equal to 3'
 
         # twist angle
-        if 'alpha' in kwargs:
-            alpha = kwargs.pop('alpha')
-        else:
+        if alpha is None:
             alpha = np.pi/2 - np.pi/p
 
         # other options
@@ -55,6 +75,11 @@ class Prism(Structure):
             'bar': True
         }
         options.update(kwargs)
+
+        # clean up kwargs
+        for key in ['bottom', 'top', 'vertical', 'diagonal', 'bar']:
+            if key in kwargs:
+                del kwargs[key]
 
         # valid equilibrium?
         if calculate_equilibrium:
@@ -125,7 +150,7 @@ class Prism(Structure):
 
         # call super
         super().__init__(nodes=nodes, members=members, number_of_strings=number_of_strings,
-                         member_tags=string_tags, label=label)
+                         member_tags=string_tags, **kwargs)
 
         if calculate_equilibrium:
             if equilibrium_method == 'analytic':

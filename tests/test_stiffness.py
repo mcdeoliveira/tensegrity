@@ -17,7 +17,7 @@ class TestStiffness(unittest.TestCase):
         # 6 rigid body nodes
         self.assertEqual(np.count_nonzero(d < 1e-3), 6)
         # 6 rigid body nodes + 1 soft node
-        self.assertEqual(np.count_nonzero(d < 1e7), 7)
+        self.assertEqual(np.count_nonzero(d < 1e6), 7)
 
     def test_rigid_body_1(self):
         s = Prism(3)
@@ -28,7 +28,7 @@ class TestStiffness(unittest.TestCase):
         # no rigid body nodes
         self.assertEqual(np.count_nonzero(d < 1e-3), 0)
         # 1 soft node
-        self.assertEqual(np.count_nonzero(d < 1e7), 1)
+        self.assertEqual(np.count_nonzero(d < 1e6), 1)
 
     def test_eigenmodes(self):
         s = Prism(3)

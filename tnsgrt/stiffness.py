@@ -48,7 +48,8 @@ class NodeConstraint:
                 self.basis = t
 
     @staticmethod
-    def node_constraint(nodes: npt.NDArray, constraints: Sequence['NodeConstraint'], storage: str = 'sparse') \
+    def node_constraint(nodes: npt.NDArray, constraints: Sequence['NodeConstraint'],
+                        storage: Literal['sparse', 'dense'] = 'sparse') \
             -> Union[Tuple[npt.NDArray, npt.NDArray], Tuple[scipy.sparse.csr_array, scipy.sparse.csr_array]]:
         """
         Construct the constraint associated with the given nodes and node constraints
@@ -111,7 +112,7 @@ class NodeConstraint:
                     T[3*i:3*(i+1), kk:kk+3] = np.eye(3)
                     kk += 3
                 else:
-                    # add to a
+                    # add to constraint
                     nocj = 3-c.dof
                     R[jj:jj+nocj, 3*i:3*(i+1)] = c.normal
                     jj += nocj
@@ -195,6 +196,76 @@ class NodeConstraint:
         rank, r, t = orthogonalize(r.transpose(), epsilon=epsilon, mode='complete')
 
         return r.transpose(), t
+
+    @staticmethod
+    def planar_constraint(nodes: npt.NDArray, normal: Optional[npt.NDArray] = None, epsilon: float = 1e-8, storage='sparse'):
+        """
+        Construct the planar constraint associated with the given nodes and normal vector
+
+        The resulting tuple is compatible with :meth:`~tnsgrt.stiffness.Stiffness.apply_constraint`
+
+        :param nodes: 3 x n array of nodes
+        :param normal: list with n constraints
+        :param storage: if ``sparse``, returns sparse arrays
+        :return: tuple with the constraint matrix, and its null space
+        """
+        assert nodes.shape[0] == 3, 'nodes must be a 3 x m array'
+        if normal is None:
+            normal = np.array([[0], [0], [1]])
+        elif normal.ndim == 1 and normal.shape[0] == 3:
+            normal = normal.reshape((3, 1))
+        elif normal.ndim == 2 and normal.shape[0] == 1 and normal.shape[1] == 3:
+            normal = normal.transpose()
+        assert normal.ndim == 2 and normal.shape[0] == 3 and normal.shape[1] == 1, 'normal must be a 3D vector'
+
+        # calculate normal and basis
+        _, normal, basis = orthogonalize(normal, mode='complete', epsilon=epsilon)
+
+        # calculate degrees of freedom
+        n = nodes.shape[1]
+        noc = n
+        dof = 2*n
+
+        if storage == 'sparse':
+            row_col_r = np.zeros((2, 3*noc))
+            data_r = np.zeros((3*noc))
+            row_col_t = np.zeros((2, 3*dof))
+            data_t = np.zeros((3*dof))
+            jj = kk = 0
+            # flatten normal and basis
+            normal = normal.flatten(order='C')
+            basis = basis.flatten(order='C')
+            nocj, dofj = 1, 2
+            for i in range(n):
+                # add to constraint
+                row_col_r[0, 3*jj:3*jj+3*nocj] = np.kron(np.arange(jj, jj+nocj), np.ones((3,)))      # row
+                row_col_r[1, 3*jj:3*jj+3*nocj] = np.kron(np.ones((nocj,)), np.arange(3*i, 3*(i+1)))  # col
+                data_r[3*jj:3*jj+3*nocj] = normal
+                jj += nocj
+                # add to basis
+                row_col_t[0, 3*kk:3*kk+3*dofj] = np.kron(np.arange(3*i, 3*(i+1)), np.ones((dofj,)))  # row
+                row_col_t[1, 3*kk:3*kk+3*dofj] = np.kron(np.ones((3,)), np.arange(kk, kk+dofj))      # col
+                data_t[3*kk:3*kk+3*dofj] = basis
+                kk += dofj
+            R = scipy.sparse.coo_matrix((data_r, row_col_r),
+                                        shape=(noc, 3*n)).tocsr()
+            T = scipy.sparse.coo_matrix((data_t, row_col_t),
+                                        shape=(3*n, dof)).tocsr()
+        else:
+            R = np.zeros((noc, 3*n))
+            T = np.zeros((3*n, dof))
+            jj = kk = 0
+            nocj, dofj = 1, 2
+            normal = normal.flatten()
+            for i in range(n):
+                # add to constraint
+                R[jj:jj+nocj, 3*i:3*(i+1)] = normal
+                jj += nocj
+                # add to basis
+                T[3*i:3*(i+1), kk:kk+dofj] = basis
+                kk += dofj
+
+        return R, T
 
 
 class Stiffness:
@@ -316,6 +387,7 @@ class Stiffness:
             if T is None:
                 # normalize before applying
                 rank, r, t = orthogonalize(R.transpose(), mode='complete', epsilon=epsilon)
+                r = r.transpose()
             else:
                 # test orthogonality
                 assert norm(R @ T) < epsilon, 'R and T must be orthogonal'
@@ -383,7 +455,7 @@ class Stiffness:
         x = self.T @ np.linalg.solve(self.K, self.T.transpose() @ f.flatten(order='F')) \
             if self.T is not None else \
             np.linalg.solve(self.K, f.flatten(order='F'))
-        return x.reshape((3, m/3))
+        return x.reshape((3, int(m/3)), order='F')
 
     def eigs(self, k: int = 12, which: Literal['LM', 'SM', 'LR', 'SR', 'LI', 'SI'] = 'SM'):
         """
