@@ -51,7 +51,7 @@ as produced by the following code:
    ax.text(1.1*np.cos(np.pi/12), 1.1*np.sin(np.pi/12), 0, 'alpha')
    plt.show()
 
-For a symmetric prism, this twist angle is the only possible
+For a symmetric prism, the 30 degrees twist angle is the only possible
 equilibrium:
 
 .. code:: python
@@ -197,7 +197,7 @@ can be obtained by searching for the tag ``‘diagonal’``:
 
    diagonals = s.get_members_by_tags('diagonal')
 
-We can use these indices to set the color of the diagonal strings
+We can use these indices to set a different color for the diagonal strings
 
 .. code:: python
 
@@ -279,7 +279,7 @@ The corresponding stiffness in the direction of the applied force is
    14998326.01216395  14998325.9409232  14998325.99099865  14998325.98357238  14998325.94372185  14998326.01679158
 
 which is orders of magnitude higher than the displacement of the same
-minimal version of the prism that is soft.
+minimal version of the prism, which was soft.
 
 The displacements, scaled :math:`10^7` times, are visualized along with
 the applied forces in the figure:
