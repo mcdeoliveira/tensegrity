@@ -2,7 +2,6 @@ import unittest
 
 import itertools
 from parameterized import parameterized
-import numpy as np
 
 from tnsgrt.michell import Michell
 

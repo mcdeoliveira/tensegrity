@@ -103,10 +103,28 @@ def norm(a: Union[npt.NDArray, scipy.sparse.csr_matrix]) -> float:
 
 
 class Colors(Enum):
+    """
+    Default colors
+    """
+
     BLUE = (0, 0.4470, 0.7410)
+    """
+    """
     ORANGE = (0.8500, 0.3250, 0.0980)
+    """
+    """
     YELLOW = (0.9290, 0.6940, 0.1250)
+    """
+    """
     PURPLE = (0.4940, 0.1840, 0.5560)
+    """
+    """
     GREEN = (0.4660, 0.6740, 0.1880)
+    """
+    """
     LIGHT_BLUE = (0.3010, 0.7450, 0.9330)
+    """
+    """
     BROWN = (0.6350, 0.0780, 0.1840)
+    """
+    """

@@ -77,9 +77,7 @@ class Prism(Structure):
         options.update(kwargs)
 
         # clean up kwargs
-        for key in ['bottom', 'top', 'vertical', 'diagonal', 'bar']:
-            if key in kwargs:
-                del kwargs[key]
+        kwargs = {k: v for k, v in kwargs.items() if k not in ['bottom', 'top', 'vertical', 'diagonal', 'bar']}
 
         # valid equilibrium?
         if calculate_equilibrium:

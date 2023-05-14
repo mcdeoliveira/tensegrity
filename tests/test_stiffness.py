@@ -2,10 +2,9 @@ import unittest
 from typing import Optional
 
 import numpy as np
-import scipy
 
 from tnsgrt.prism import Prism
-from tnsgrt.stiffness import Stiffness, NodeConstraint
+from tnsgrt.stiffness import NodeConstraint
 
 
 class TestStiffness(unittest.TestCase):

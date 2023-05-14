@@ -2,7 +2,7 @@ import warnings
 
 import numpy as np
 
-from tnsgrt.structure import Structure
+from .structure import Structure
 
 
 class Michell(Structure):
@@ -12,6 +12,7 @@ class Michell(Structure):
     :param n: the number of sides
     :param beta: the angle between the radius and the outermost bar
     :param q: the number of layers
+    :param radius: the radius of the structure
     :param \\**kwargs: See below
 
     :Keyword Arguments:
@@ -31,16 +32,19 @@ class Michell(Structure):
     1. Additional keyword arguments are passed to :class:`tnsgrt.structure.Structure`
     """
 
-    def __init__(self, n: int = 6, beta: float = np.pi/4, q: int = 4, **kwargs):
+    def __init__(self, n: int = 6, beta: float = np.pi/4, q: int = 4, radius: float = 1, **kwargs):
         # other options
         options = {
             'spiral': True,
             'radial': True,
             'outer': True,
             'inner': True,
-            'center': True
+            'center': True,
         }
         options.update(kwargs)
+
+        # remove used options
+        kwargs = {k: v for k, v in kwargs.items() if k not in ['spiral', 'radial', 'outer', 'inner', 'center']}
 
         # wedge angle
         phi = np.pi / n
@@ -56,8 +60,8 @@ class Michell(Structure):
         nodes = np.zeros((3*n, q))
         for i in range(n):
             for k in range(q):
-                nodes[3*i:3*(i+1), k] = [a ** k * np.cos((2*i - k) * phi),
-                                         a ** k * np.sin((2*i - k) * phi),
+                nodes[3*i:3*(i+1), k] = [radius * (a ** k) * np.cos((2*i - k) * phi),
+                                         radius * (a ** k) * np.sin((2*i - k) * phi),
                                          0]
 
         def node_index(i, j):
@@ -120,9 +124,6 @@ class Michell(Structure):
 
         # print(nodes)
         # print(members)
-
-        # remove used options
-        kwargs = {k: v for k, v in options.items() if k not in ['spiral', 'radial', 'outer', 'inner', 'center']}
 
         # call super
         super().__init__(nodes, members, **kwargs)
