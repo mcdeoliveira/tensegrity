@@ -1,3 +1,4 @@
+import collections
 import itertools
 import warnings
 from dataclasses import dataclass
@@ -123,7 +124,8 @@ class Structure:
         :return: short description of structure as a string
         """
         return "Structure " + (f" labeled '{self.label}'" if self.label else '') + \
-            f"with {self.get_number_of_members_by_tag('bar')} bars " \
+            f"with {self.get_number_of_nodes()} nodes, " \
+            f"{self.get_number_of_members_by_tag('bar')} bars " \
             f"and {self.get_number_of_members_by_tag('string')} strings"
 
     def copy(self) -> 'Structure':
@@ -470,7 +472,7 @@ class Structure:
         :param verbose: if ``True`` warns of the members to be deleted
         :return:
         """
-        if members_to_be_deleted:
+        if members_to_be_deleted is not None and len(members_to_be_deleted):
             if verbose:
                 warnings.warn('The following members will be removed: '
                               f'{members_to_be_deleted}')
@@ -541,6 +543,65 @@ class Structure:
         # remove nodes
         self.remove_nodes(nodes_to_be_removed)
 
+    def merge_overlapping_members(self, verbose: bool = False) -> None:
+        """
+        Merge overlapping members in structure
+
+        **Notes:**
+        1. Overlapping members are members that share the same set of nodes
+        2. The properties 'lambda_', 'force', 'mass', and 'volume' are summed on the merged member
+        """
+        # sort members
+        sorted_members = np.sort(self.members, axis=0)
+        unique_members, unique_indices, unique_inverse, unique_counts = \
+            np.unique(sorted_members, axis=1, return_index=True, return_inverse=True, return_counts=True)
+
+        # select members that appear more than once
+        repeated_members = unique_indices[unique_counts > 1]
+
+        # quick return
+        if len(repeated_members) == 0:
+            if verbose:
+                warnings.warn('no members were merged')
+            return
+
+        # find out members to be removed and tags to be added
+        members_to_be_removed = []
+        tags_to_be_added = {}
+        for member_idx in unique_inverse[repeated_members]:
+            # find repeated members
+            repeated = np.nonzero(unique_inverse == member_idx)[0]
+            # merge member properties
+            self.member_properties.loc[repeated[0], ['force', 'lambda_', 'mass', 'volume']] = \
+                self.member_properties.loc[repeated, ['force', 'lambda_', 'mass', 'volume']].sum()
+            # merge member tags
+            existing_tags = set(self.get_member_tags(repeated[0]))
+            repeated_tags = set(*[self.get_member_tags(j) for j in repeated[1:]])
+            new_tags = repeated_tags - existing_tags
+            # TODO: warn of change of sign
+            tags_to_be_added[repeated[0]] = new_tags
+            # which members to remove?
+            members_to_be_removed.extend(repeated[1:])
+
+        # invert tag map
+        inv_tag_map = collections.defaultdict(list)
+        for member, tags in tags_to_be_added.items():
+            for tag in tags:
+                inv_tag_map[tag].append(member)
+        # add tags
+        for tag, members in inv_tag_map.items():
+            self.add_member_tag(tag, np.array([members]))
+        # remove members
+        if members_to_be_removed:
+            self.remove_members(members_to_be_removed, verbose)
+
+    def get_slack_members(self, epsilon: bool = 1e-8) -> pd.Index:
+        """
+        :return: the index of members with small force coefficients
+        """
+        return self.member_properties.index[self.member_properties['lambda_'].abs() < epsilon]
+        # return self.member_properties.index[-epsilon < self.member_properties['lambda_'] < epsilon]
+
     def get_number_of_members(self) -> int:
         """
         :return: the number of members in ``Structure``
@@ -555,6 +616,19 @@ class Structure:
         :return: list of tags
         """
         return [k for k, v in self.member_tags.items() if index in v]
+
+    # def set_member_tags(self, index: int, tags: list[str]) -> None:
+    #     """
+    #     Set A list with the tags for the member with index ``index``
+    #
+    #     :param index: the index of the member
+    #     :param tags: the tags to set
+    #     :return: list of tags
+    #     """
+    #     for tag in tags:
+    #         member_tags = self.member_tags[tag]
+    #         if index not in member_tags:
+    #             self.member_tags[tag] = insert_sorted(member_tags, index)
 
     def has_member_tag(self, index: int, tag: str) -> bool:
         """
@@ -601,38 +675,19 @@ class Structure:
         if tag in self.member_defaults:
             del self.member_defaults[tag]
 
-    def set_member_tag(self, tag: str, indices: npt.NDArray[np.int64]) -> None:
-        """
-        Associate members with indices in ``indices`` to the new tag ``tag``
-
-        :param tag: the member tag
-        :param indices: the member indices
-        """
-        # set new member tag
-
-        # make sure tag is unique
-        assert tag not in self.member_tags, f"member tag '{tag}' already exists"
-
-        # normalize indices
-        v = np.unique(indices)
-
-        # make sure indices are valid
-        number_of_members = self.get_number_of_members()
-        assert np.amin(v) >= 0, \
-            'member tag index must be greater or equal than zero'
-        assert np.amax(v) < number_of_members, \
-            'member tag index must be less than number of members'
-
-        # set tag
-        self.member_tags[tag] = v
-
     def add_member_tag(self, tag: str, indices: npt.NDArray[np.int64]) -> None:
         """
-        Add members with indices in ``indices`` to the existing member tag ``tag``
+        Add members with indices in ``indices`` to the member tag ``tag``
+
+        Create tag if it does not already exist
 
         :param tag: the member tag
         :param indices: the member indices
         """
+
+        # quick return
+        if len(indices) == 0:
+            return
 
         # make sure indices are valid
         number_of_members = self.get_number_of_members()
@@ -641,8 +696,12 @@ class Structure:
         assert np.amax(indices) < number_of_members, \
             'member tag index must be less than number of members'
 
-        # set tag
-        self.member_tags[tag] = np.union1d(self.member_tags[tag], indices)
+        if tag in self.member_tags:
+            # set tag
+            self.member_tags[tag] = np.union1d(self.member_tags[tag], indices)
+        else:
+            # add tag
+            self.member_tags[tag] = np.unique(indices)
 
     def remove_member_tag(self, tag: str, indices: npt.NDArray[np.int64]) -> None:
         """
@@ -666,36 +725,19 @@ class Structure:
         if tag in self.node_defaults:
             del self.node_defaults[tag]
 
-    def set_node_tag(self, tag: str, indices: npt.NDArray[np.int64]) -> None:
-        """
-        Associate nodes with indices in ``indices`` to the new tag ``tag``
-
-        :param tag: the node tag
-        :param indices: the node indices
-        """
-
-        # make sure tag is unique
-        assert tag not in self.node_tags, f"node tag '{tag}' already exists"
-
-        # normalize indices
-        v = np.unique(indices)
-
-        # make sure indices are valid
-        assert np.amin(v) >= 0, \
-            'node tag index must be greater or equal than zero'
-        assert np.amax(v) < self.get_number_of_nodes(), \
-            'node tag index must be less than number of nodes'
-
-        # set tag
-        self.node_tags[tag] = v
-
     def add_node_tag(self, tag: str, indices: npt.NDArray[np.int64]) -> None:
         """
-        Add nodes with indices in ``indices`` to the existing node tag ``tag``
+        Add nodes with indices in ``indices`` to the node tag ``tag``
+
+        Create tag if it does not already exist
 
         :param tag: the node tag
         :param indices: the node indices
         """
+
+        # quick return
+        if len(indices) == 0:
+            return
 
         # make sure indices are valid
         assert np.amin(indices) >= 0, \
@@ -703,8 +745,12 @@ class Structure:
         assert np.amax(indices) < self.get_number_of_nodes(), \
             'node tag index must be less than number of nodes'
 
-        # set tag
-        self.node_tags[tag] = np.union1d(self.node_tags[tag], indices)
+        if tag in self.node_tags:
+            # set tag
+            self.node_tags[tag] = np.union1d(self.node_tags[tag], indices)
+        else:
+            # create tag
+            self.node_tags[tag] = np.unique(indices)
 
     def remove_node_tag(self, tag: str, indices: npt.NDArray[np.int64]) -> None:
         """
@@ -948,7 +994,7 @@ class Structure:
 
     def merge(self, s: 'Structure', inplace=False) -> Optional['Structure']:
         """
-        Return a new ``Structure`` in which the current `Structure`` and ``s`` are merged
+        Return a new ``Structure`` in which the current structure and ``s`` are merged
 
         :param s: the ``Structure`` to merge
         :param inplace: if ``True`` merge is done in place without creating a copy

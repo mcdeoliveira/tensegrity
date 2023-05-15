@@ -711,7 +711,7 @@ class TestStructure(unittest.TestCase):
         }
         s = Structure(nodes, members, number_of_strings=2, node_tags=nodes_tags, member_tags=members_tag)
 
-        s.set_node_tag('nags2', [0, 3])
+        s.add_node_tag('nags2', [0, 3])
         np.testing.assert_array_equal(s.node_tags['nags2'], [0, 3])
 
         s.add_node_tag('nags1', [3])
@@ -737,7 +737,7 @@ class TestStructure(unittest.TestCase):
         }
         s = Structure(nodes, members, number_of_strings=2, node_tags=nodes_tags, member_tags=members_tag)
 
-        s.set_member_tag('mags2', [0, 3])
+        s.add_member_tag('mags2', [0, 3])
         np.testing.assert_array_equal(s.member_tags['mags2'], [0, 3])
 
         s.add_member_tag('mags1', [3])
@@ -800,6 +800,27 @@ class TestStructure(unittest.TestCase):
         np.testing.assert_array_equal(s.members, np.array([[0, 1, 2, 3, 0], [1, 2, 0, 4, 1]]))
         np.testing.assert_array_equal(s.member_tags['bar'], [2, 3, 4])
         np.testing.assert_array_equal(s.member_tags['mags1'], [1, 2, 4])
+
+    def test_slack_members(self):
+
+        nodes = np.array([[1, 0, 0, 0, 1, 1/2], [0, 1, 0, 1, 1, 1/2], [0, 0, 2, 1, 3, 0]])
+        nodes_tags = {
+            'nags0': np.array([0, 3], dtype=np.int64),
+            'nags1': np.array([1, 2], dtype=np.int64)
+        }
+        members = np.array([[0, 1, 2, 3, 0, 1], [1, 2, 0, 4, 5, 5]])
+        members_tag = {
+            'mags0': np.array([0], dtype=np.int64),
+            'mags1': np.array([1, 2, 5], dtype=np.int64)
+        }
+        s = Structure(nodes, members, number_of_strings=2, node_tags=nodes_tags, member_tags=members_tag)
+        s.set_member_properties([0, 3, 5], 'lambda_', np.array([-1, 2, -3]))
+        np.testing.assert_array_equal(s.get_slack_members(), [1, 2, 4])
+        s.set_member_properties([2], 'lambda_', np.array([1e-9]))
+        np.testing.assert_array_equal(s.get_slack_members(), [1, 2, 4])
+        s.set_member_properties([0], 'lambda_', np.array([1e-9]))
+        s.remove_members(s.get_slack_members())
+        self.assertEqual(s.get_number_of_members(), 2)
 
 
 if __name__ == '__main__':
