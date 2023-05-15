@@ -820,6 +820,10 @@ class Structure:
         :param index: the member index
         :param labels: the member property labels
         :return: datafrome with the selected properties
+
+        **WARNING:** :meth:`tnsgrt.structure.Structure.get_member_properties` uses pandas' `loc` method that includes
+        the last element of slices; See `pandas documentation <https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.loc.html>`_
+        for details
         """
         return self.member_properties.loc[index, labels]
 
@@ -846,6 +850,10 @@ class Structure:
         :param index: the node index
         :param labels: the node property labels
         :return: datafrome with the selected properties
+
+        **WARNING:** :meth:`tnsgrt.structure.Structure.get_node_properties` uses pandas' `loc` method that includes
+        the last element of slices; See `pandas documentation <https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.loc.html>`_
+        for details
         """
         return self.node_properties.loc[index, labels]
 
