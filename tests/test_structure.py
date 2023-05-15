@@ -22,22 +22,22 @@ class TestStructure(unittest.TestCase):
         self.assertEqual(s.node_tags, {})
         self.assertEqual(len(s.member_properties), 0)
         self.assertEqual(s.get_number_of_members(), 0)
-        np.testing.assert_array_equal(s.members, np.zeros((2, 0), np.uint64))
-        np.testing.assert_array_equal(s.member_tags['bar'], np.zeros((0,), np.uint64))
-        np.testing.assert_array_equal(s.member_tags['string'], np.zeros((0,), np.uint64))
+        np.testing.assert_array_equal(s.members, np.zeros((2, 0), np.int64))
+        np.testing.assert_array_equal(s.member_tags['bar'], np.zeros((0,), np.int64))
+        np.testing.assert_array_equal(s.member_tags['string'], np.zeros((0,), np.int64))
 
         nodes = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
         s = Structure(nodes, label='label')
         self.assertEqual(s.label, 'label')
         self.assertEqual(s.nodes.dtype, np.float_)
-        self.assertEqual(s.members.dtype, np.uint64)
+        self.assertEqual(s.members.dtype, np.int64)
         np.testing.assert_array_equal(s.nodes, nodes)
         self.assertEqual(len(s.node_properties), 3)
         self.assertEqual(s.get_number_of_nodes(), 3)
         self.assertEqual(s.node_tags, {})
-        np.testing.assert_array_equal(s.members, np.zeros((2, 0), np.uint64))
-        np.testing.assert_array_equal(s.member_tags['bar'], np.zeros((0,), np.uint64))
-        np.testing.assert_array_equal(s.member_tags['string'], np.zeros((0,), np.uint64))
+        np.testing.assert_array_equal(s.members, np.zeros((2, 0), np.int64))
+        np.testing.assert_array_equal(s.member_tags['bar'], np.zeros((0,), np.int64))
+        np.testing.assert_array_equal(s.member_tags['string'], np.zeros((0,), np.int64))
         self.assertEqual(s.get_number_of_nodes(), 3)
         self.assertEqual(s.get_number_of_members(), 0)
         self.assertEqual(len(s.member_properties), 0)
@@ -46,14 +46,14 @@ class TestStructure(unittest.TestCase):
         s = Structure(nodes, members, label='label')
         self.assertEqual(s.label, 'label')
         self.assertEqual(s.nodes.dtype, np.float_)
-        self.assertEqual(s.members.dtype, np.uint64)
+        self.assertEqual(s.members.dtype, np.int64)
         np.testing.assert_array_equal(s.nodes, nodes)
         self.assertEqual(len(s.node_properties), 3)
         self.assertEqual(s.get_number_of_nodes(), 3)
         self.assertEqual(s.node_tags, {})
         np.testing.assert_array_equal(s.members, members)
-        np.testing.assert_array_equal(s.member_tags['bar'], np.arange(0, 3, dtype=np.uint64))
-        np.testing.assert_array_equal(s.member_tags['string'], np.zeros((0,), np.uint64))
+        np.testing.assert_array_equal(s.member_tags['bar'], np.arange(0, 3, dtype=np.int64))
+        np.testing.assert_array_equal(s.member_tags['string'], np.zeros((0,), np.int64))
         self.assertEqual(s.get_number_of_nodes(), 3)
         self.assertEqual(s.get_number_of_members(), 3)
         self.assertEqual(len(s.member_properties), 3)
@@ -61,14 +61,14 @@ class TestStructure(unittest.TestCase):
         s = Structure(nodes, members, number_of_strings=1)
         self.assertEqual(s.label, None)
         self.assertEqual(s.nodes.dtype, np.float_)
-        self.assertEqual(s.members.dtype, np.uint64)
+        self.assertEqual(s.members.dtype, np.int64)
         np.testing.assert_array_equal(s.nodes, nodes)
         self.assertEqual(len(s.node_properties), 3)
         self.assertEqual(s.get_number_of_nodes(), 3)
         self.assertEqual(s.node_tags, {})
         np.testing.assert_array_equal(s.members, members)
-        np.testing.assert_array_equal(s.member_tags['bar'], np.arange(1, 3, dtype=np.uint64))
-        np.testing.assert_array_equal(s.member_tags['string'], np.arange(0, 1, dtype=np.uint64))
+        np.testing.assert_array_equal(s.member_tags['bar'], np.arange(1, 3, dtype=np.int64))
+        np.testing.assert_array_equal(s.member_tags['string'], np.arange(0, 1, dtype=np.int64))
         self.assertEqual(s.get_number_of_nodes(), 3)
         self.assertEqual(s.get_number_of_members(), 3)
         self.assertEqual(len(s.member_properties), 3)
@@ -76,14 +76,14 @@ class TestStructure(unittest.TestCase):
         s = Structure(nodes, members, number_of_strings=2)
         self.assertEqual(s.label, None)
         self.assertEqual(s.nodes.dtype, np.float_)
-        self.assertEqual(s.members.dtype, np.uint64)
+        self.assertEqual(s.members.dtype, np.int64)
         np.testing.assert_array_equal(s.nodes, nodes)
         self.assertEqual(len(s.node_properties), 3)
         self.assertEqual(s.get_number_of_nodes(), 3)
         self.assertEqual(s.node_tags, {})
         np.testing.assert_array_equal(s.members, members)
-        np.testing.assert_array_equal(s.member_tags['bar'], np.arange(2, 3, dtype=np.uint64))
-        np.testing.assert_array_equal(s.member_tags['string'], np.arange(0, 2, dtype=np.uint64))
+        np.testing.assert_array_equal(s.member_tags['bar'], np.arange(2, 3, dtype=np.int64))
+        np.testing.assert_array_equal(s.member_tags['string'], np.arange(0, 2, dtype=np.int64))
         self.assertEqual(s.get_number_of_nodes(), 3)
         self.assertEqual(s.get_number_of_members(), 3)
         self.assertEqual(len(s.member_properties), 3)
@@ -92,27 +92,27 @@ class TestStructure(unittest.TestCase):
         Structure.member_defaults['vertical'] = {'linewidth': 1001, 'volume': 2}
         s = Structure(nodes, members,
                       member_tags={
-                          'bar': np.arange(1, 3, dtype=np.uint64),
-                          'string': np.arange(0, 1, dtype=np.uint64),
-                          'vertical': np.arange(2, 3, dtype=np.uint64)
+                          'bar': np.arange(1, 3, dtype=np.int64),
+                          'string': np.arange(0, 1, dtype=np.int64),
+                          'vertical': np.arange(2, 3, dtype=np.int64)
                       },
                       node_tags={
-                          'bottom': np.array([0, 1], dtype=np.uint64),
-                          'top': np.array([2], dtype=np.uint64)
+                          'bottom': np.array([0, 1], dtype=np.int64),
+                          'top': np.array([2], dtype=np.int64)
                       })
         self.assertEqual(s.label, None)
         self.assertEqual(s.nodes.dtype, np.float_)
-        self.assertEqual(s.members.dtype, np.uint64)
+        self.assertEqual(s.members.dtype, np.int64)
         np.testing.assert_array_equal(s.nodes, nodes)
         self.assertEqual(len(s.node_properties), 3)
         self.assertEqual(s.get_number_of_nodes(), 3)
         self.assertEqual(set(s.node_tags.keys()), {'bottom', 'top'})
-        np.testing.assert_array_equal(s.node_tags['bottom'], np.array([0, 1], dtype=np.uint64))
-        np.testing.assert_array_equal(s.node_tags['top'], np.array([2], dtype=np.uint64))
+        np.testing.assert_array_equal(s.node_tags['bottom'], np.array([0, 1], dtype=np.int64))
+        np.testing.assert_array_equal(s.node_tags['top'], np.array([2], dtype=np.int64))
         np.testing.assert_array_equal(s.members, members)
-        np.testing.assert_array_equal(s.member_tags['bar'], np.arange(1, 3, dtype=np.uint64))
-        np.testing.assert_array_equal(s.member_tags['string'], np.arange(0, 1, dtype=np.uint64))
-        np.testing.assert_array_equal(s.member_tags['vertical'], np.arange(2, 3, dtype=np.uint64))
+        np.testing.assert_array_equal(s.member_tags['bar'], np.arange(1, 3, dtype=np.int64))
+        np.testing.assert_array_equal(s.member_tags['string'], np.arange(0, 1, dtype=np.int64))
+        np.testing.assert_array_equal(s.member_tags['vertical'], np.arange(2, 3, dtype=np.int64))
         self.assertEqual(s.get_number_of_nodes(), 3)
         self.assertEqual(s.get_number_of_members(), 3)
         self.assertEqual(s.get_member_tags(0), ['string'])
@@ -137,13 +137,13 @@ class TestStructure(unittest.TestCase):
         members = np.array([[0, 1, 2], [1, 2, 0]])
         s = Structure(nodes, members,
                       member_tags={
-                          'bar': np.arange(1, 3, dtype=np.uint64),
-                          'string': np.arange(0, 1, dtype=np.uint64),
-                          'vertical': np.arange(2, 3, dtype=np.uint64)
+                          'bar': np.arange(1, 3, dtype=np.int64),
+                          'string': np.arange(0, 1, dtype=np.int64),
+                          'vertical': np.arange(2, 3, dtype=np.int64)
                       },
                       node_tags={
-                          'bottom': np.array([0, 1], dtype=np.uint64),
-                          'top': np.array([2], dtype=np.uint64)
+                          'bottom': np.array([0, 1], dtype=np.int64),
+                          'top': np.array([2], dtype=np.int64)
                       })
 
         properties = s.get_member_properties([1, 2], 'volume')
@@ -203,23 +203,23 @@ class TestStructure(unittest.TestCase):
         members1 = np.array([[0, 1, 2], [1, 2, 0]])
         s = Structure(nodes1, members1,
                       member_tags={
-                          'bar': np.arange(1, 3, dtype=np.uint64),
-                          'string': np.arange(0, 1, dtype=np.uint64),
-                          'vertical': np.arange(2, 3, dtype=np.uint64)
+                          'bar': np.arange(1, 3, dtype=np.int64),
+                          'string': np.arange(0, 1, dtype=np.int64),
+                          'vertical': np.arange(2, 3, dtype=np.int64)
                       })
         members2 = s.get_number_of_nodes() + np.array([[0], [1]])
         nodes2 = np.array([[1, 0], [1, 1], [0, 1]])
         s.add_nodes(nodes2, node_tags={
-            'bottom': np.array([0], dtype=np.uint64),
-            'top': np.array([1], dtype=np.uint64)
+            'bottom': np.array([0], dtype=np.int64),
+            'top': np.array([1], dtype=np.int64)
         })
         s.add_members(members2, number_of_strings=1)
 
         self.assertEqual(s.get_number_of_nodes(), 5)
         self.assertEqual(len(s.node_properties), 5)
         self.assertEqual(set(s.node_tags.keys()), {'bottom', 'top'})
-        np.testing.assert_array_equal(s.node_tags['bottom'], np.array([3], dtype=np.uint64))
-        np.testing.assert_array_equal(s.node_tags['top'], np.array([4], dtype=np.uint64))
+        np.testing.assert_array_equal(s.node_tags['bottom'], np.array([3], dtype=np.int64))
+        np.testing.assert_array_equal(s.node_tags['top'], np.array([4], dtype=np.int64))
         self.assertEqual(s.get_number_of_members(), 4)
         self.assertEqual(set(s.member_tags.keys()), {'bar', 'string', 'vertical'})
         np.testing.assert_array_equal(s.member_tags['bar'], [1, 2])
@@ -237,28 +237,28 @@ class TestStructure(unittest.TestCase):
         Structure.member_defaults['vertical'] = {'linewidth': 1001, 'volume': 2}
         s = Structure(nodes, members,
                       member_tags={
-                          'bar': np.arange(1, 3, dtype=np.uint64),
-                          'string': np.arange(0, 1, dtype=np.uint64),
-                          'vertical': np.arange(2, 3, dtype=np.uint64)
+                          'bar': np.arange(1, 3, dtype=np.int64),
+                          'string': np.arange(0, 1, dtype=np.int64),
+                          'vertical': np.arange(2, 3, dtype=np.int64)
                       },
                       node_tags={
-                          'bottom': np.array([0, 1], dtype=np.uint64),
-                          'top': np.array([2], dtype=np.uint64)
+                          'bottom': np.array([0, 1], dtype=np.int64),
+                          'top': np.array([2], dtype=np.int64)
                       }, label='label')
 
         self.assertEqual(s.label, 'label')
         self.assertEqual(s.nodes.dtype, np.float_)
-        self.assertEqual(s.members.dtype, np.uint64)
+        self.assertEqual(s.members.dtype, np.int64)
         np.testing.assert_array_equal(s.nodes, nodes)
         self.assertEqual(len(s.node_properties), 3)
         self.assertEqual(s.get_number_of_nodes(), 3)
         self.assertEqual(set(s.node_tags.keys()), {'bottom', 'top'})
-        np.testing.assert_array_equal(s.node_tags['bottom'], np.array([0, 1], dtype=np.uint64))
-        np.testing.assert_array_equal(s.node_tags['top'], np.array([2], dtype=np.uint64))
+        np.testing.assert_array_equal(s.node_tags['bottom'], np.array([0, 1], dtype=np.int64))
+        np.testing.assert_array_equal(s.node_tags['top'], np.array([2], dtype=np.int64))
         np.testing.assert_array_equal(s.members, members)
-        np.testing.assert_array_equal(s.member_tags['bar'], np.arange(1, 3, dtype=np.uint64))
-        np.testing.assert_array_equal(s.member_tags['string'], np.arange(0, 1, dtype=np.uint64))
-        np.testing.assert_array_equal(s.member_tags['vertical'], np.arange(2, 3, dtype=np.uint64))
+        np.testing.assert_array_equal(s.member_tags['bar'], np.arange(1, 3, dtype=np.int64))
+        np.testing.assert_array_equal(s.member_tags['string'], np.arange(0, 1, dtype=np.int64))
+        np.testing.assert_array_equal(s.member_tags['vertical'], np.arange(2, 3, dtype=np.int64))
         self.assertEqual(s.get_number_of_nodes(), 3)
         self.assertEqual(s.get_number_of_members(), 3)
         self.assertEqual(s.get_member_tags(0), ['string'])
@@ -280,17 +280,17 @@ class TestStructure(unittest.TestCase):
 
         self.assertEqual(copy.label, 'label')
         self.assertEqual(copy.nodes.dtype, np.float_)
-        self.assertEqual(copy.members.dtype, np.uint64)
+        self.assertEqual(copy.members.dtype, np.int64)
         np.testing.assert_array_equal(copy.nodes, nodes)
         self.assertEqual(len(copy.node_properties), 3)
         self.assertEqual(copy.get_number_of_nodes(), 3)
         self.assertEqual(set(copy.node_tags.keys()), {'bottom', 'top'})
-        np.testing.assert_array_equal(copy.node_tags['bottom'], np.array([0, 1], dtype=np.uint64))
-        np.testing.assert_array_equal(copy.node_tags['top'], np.array([2], dtype=np.uint64))
+        np.testing.assert_array_equal(copy.node_tags['bottom'], np.array([0, 1], dtype=np.int64))
+        np.testing.assert_array_equal(copy.node_tags['top'], np.array([2], dtype=np.int64))
         np.testing.assert_array_equal(copy.members, members)
-        np.testing.assert_array_equal(copy.member_tags['bar'], np.arange(1, 3, dtype=np.uint64))
-        np.testing.assert_array_equal(copy.member_tags['string'], np.arange(0, 1, dtype=np.uint64))
-        np.testing.assert_array_equal(copy.member_tags['vertical'], np.arange(2, 3, dtype=np.uint64))
+        np.testing.assert_array_equal(copy.member_tags['bar'], np.arange(1, 3, dtype=np.int64))
+        np.testing.assert_array_equal(copy.member_tags['string'], np.arange(0, 1, dtype=np.int64))
+        np.testing.assert_array_equal(copy.member_tags['vertical'], np.arange(2, 3, dtype=np.int64))
         self.assertEqual(copy.get_number_of_nodes(), 3)
         self.assertEqual(copy.get_number_of_members(), 3)
         self.assertEqual(copy.get_member_tags(0), ['string'])
@@ -316,13 +316,13 @@ class TestStructure(unittest.TestCase):
         members1 = np.array([[0, 1, 2], [1, 2, 0]])
         s1 = Structure(nodes1, members1,
                        member_tags={
-                           'bar': np.arange(1, 3, dtype=np.uint64),
-                           'string': np.arange(0, 1, dtype=np.uint64),
-                           'vertical': np.arange(2, 3, dtype=np.uint64)
+                           'bar': np.arange(1, 3, dtype=np.int64),
+                           'string': np.arange(0, 1, dtype=np.int64),
+                           'vertical': np.arange(2, 3, dtype=np.int64)
                        },
                        node_tags={
-                           'bottom': np.array([0, 1], dtype=np.uint64),
-                           'top': np.array([2], dtype=np.uint64)
+                           'bottom': np.array([0, 1], dtype=np.int64),
+                           'top': np.array([2], dtype=np.int64)
                        })
 
         nodes2 = np.array([[1, 0], [1, 1], [0, 1]])
@@ -334,8 +334,8 @@ class TestStructure(unittest.TestCase):
         self.assertEqual(s1.get_number_of_nodes(), 5)
         self.assertEqual(len(s1.node_properties), 5)
         self.assertEqual(set(s1.node_tags.keys()), {'bottom', 'top'})
-        np.testing.assert_array_equal(s1.node_tags['bottom'], np.array([0, 1], dtype=np.uint64))
-        np.testing.assert_array_equal(s1.node_tags['top'], np.array([2], dtype=np.uint64))
+        np.testing.assert_array_equal(s1.node_tags['bottom'], np.array([0, 1], dtype=np.int64))
+        np.testing.assert_array_equal(s1.node_tags['top'], np.array([2], dtype=np.int64))
         self.assertEqual(s1.get_number_of_members(), 4)
         self.assertEqual(set(s1.member_tags.keys()), {'bar', 'string', 'vertical'})
         np.testing.assert_array_equal(s1.member_tags['bar'], [1, 2])
@@ -349,13 +349,13 @@ class TestStructure(unittest.TestCase):
         # members1 = np.array([[0, 1, 2], [1, 2, 0]])
         s1 = Structure(nodes1, members1,
                        member_tags={
-                           'bar': np.arange(1, 3, dtype=np.uint64),
-                           'string': np.arange(0, 1, dtype=np.uint64),
-                           'vertical': np.arange(2, 3, dtype=np.uint64)
+                           'bar': np.arange(1, 3, dtype=np.int64),
+                           'string': np.arange(0, 1, dtype=np.int64),
+                           'vertical': np.arange(2, 3, dtype=np.int64)
                        },
                        node_tags={
-                           'bottom': np.array([0, 1], dtype=np.uint64),
-                           'top': np.array([2], dtype=np.uint64)
+                           'bottom': np.array([0, 1], dtype=np.int64),
+                           'top': np.array([2], dtype=np.int64)
                        })
 
         # nodes2 = np.array([[1, 0], [1, 1], [0, 1]])
@@ -366,8 +366,8 @@ class TestStructure(unittest.TestCase):
         self.assertEqual(s2.get_number_of_nodes(), 5)
         self.assertEqual(len(s2.node_properties), 5)
         self.assertEqual(set(s2.node_tags.keys()), {'bottom', 'top'})
-        np.testing.assert_array_equal(s2.node_tags['bottom'], np.array([2, 3], dtype=np.uint64))
-        np.testing.assert_array_equal(s2.node_tags['top'], np.array([4], dtype=np.uint64))
+        np.testing.assert_array_equal(s2.node_tags['bottom'], np.array([2, 3], dtype=np.int64))
+        np.testing.assert_array_equal(s2.node_tags['top'], np.array([4], dtype=np.int64))
         self.assertEqual(s2.get_number_of_members(), 4)
         self.assertEqual(set(s2.member_tags.keys()), {'bar', 'string', 'vertical'})
         np.testing.assert_array_equal(s2.member_tags['bar'], [2, 3])
@@ -379,13 +379,13 @@ class TestStructure(unittest.TestCase):
 
         s1 = Structure(nodes1, members1,
                        member_tags={
-                           'bar': np.arange(1, 3, dtype=np.uint64),
-                           'string': np.arange(0, 1, dtype=np.uint64),
-                           'vertical': np.arange(2, 3, dtype=np.uint64)
+                           'bar': np.arange(1, 3, dtype=np.int64),
+                           'string': np.arange(0, 1, dtype=np.int64),
+                           'vertical': np.arange(2, 3, dtype=np.int64)
                        },
                        node_tags={
-                           'bottom': np.array([0, 1], dtype=np.uint64),
-                           'top': np.array([2], dtype=np.uint64)
+                           'bottom': np.array([0, 1], dtype=np.int64),
+                           'top': np.array([2], dtype=np.int64)
                        })
 
         # nodes2 = np.array([[1, 0], [1, 1], [0, 1]])
@@ -399,8 +399,8 @@ class TestStructure(unittest.TestCase):
         self.assertEqual(s.get_number_of_nodes(), 5)
         self.assertEqual(len(s.node_properties), 5)
         self.assertEqual(set(s.node_tags.keys()), {'bottom', 'top'})
-        np.testing.assert_array_equal(s.node_tags['bottom'], np.array([0, 1], dtype=np.uint64))
-        np.testing.assert_array_equal(s.node_tags['top'], np.array([2], dtype=np.uint64))
+        np.testing.assert_array_equal(s.node_tags['bottom'], np.array([0, 1], dtype=np.int64))
+        np.testing.assert_array_equal(s.node_tags['top'], np.array([2], dtype=np.int64))
         self.assertEqual(s.get_number_of_members(), 4)
         self.assertEqual(set(s.member_tags.keys()), {'bar', 'string', 'vertical'})
         np.testing.assert_array_equal(s.member_tags['bar'], [1, 2])
@@ -463,7 +463,7 @@ class TestStructure(unittest.TestCase):
     def test_remove_nodes(self):
 
         nodes1 = np.array([[1, 0, 0, 0], [0, 1, 0, 1], [0, 0, 2, 1]])
-        nodes1_tags = {'tags': np.array([0, 2, 3], dtype=np.uint64)}
+        nodes1_tags = {'tags': np.array([0, 2, 3], dtype=np.int64)}
         members1 = np.array([[0, 1, 2], [1, 2, 0]])
         s = Structure(nodes1, members1, number_of_strings=2, node_tags=nodes1_tags)
 
@@ -567,9 +567,9 @@ class TestStructure(unittest.TestCase):
     def test_remove_members(self):
 
         nodes = np.array([[1, 0, 0, 0], [0, 1, 0, 1], [0, 0, 2, 1]])
-        nodes_tags = {'tags': np.array([0, 2, 3], dtype=np.uint64)}
+        nodes_tags = {'tags': np.array([0, 2, 3], dtype=np.int64)}
         members = np.array([[0, 1, 2], [1, 2, 0]])
-        members_tag = {'mtag': np.array([0, 2], dtype=np.uint64)}
+        members_tag = {'mtag': np.array([0, 2], dtype=np.int64)}
 
         s = Structure(nodes, members, number_of_strings=2, node_tags=nodes_tags, member_tags=members_tag)
 
@@ -701,13 +701,13 @@ class TestStructure(unittest.TestCase):
 
         nodes = np.array([[1, 0, 0, 0, 1], [0, 1, 0, 1, 1], [0, 0, 2, 1, 3]])
         nodes_tags = {
-            'nags0': np.array([0, 3], dtype=np.uint64),
-            'nags1': np.array([1, 2], dtype=np.uint64)
+            'nags0': np.array([0, 3], dtype=np.int64),
+            'nags1': np.array([1, 2], dtype=np.int64)
         }
         members = np.array([[0, 1, 2, 3], [1, 2, 0, 4]])
         members_tag = {
-            'mags0': np.array([0], dtype=np.uint64),
-            'mags1': np.array([1, 2], dtype=np.uint64)
+            'mags0': np.array([0], dtype=np.int64),
+            'mags1': np.array([1, 2], dtype=np.int64)
         }
         s = Structure(nodes, members, number_of_strings=2, node_tags=nodes_tags, member_tags=members_tag)
 
@@ -727,13 +727,13 @@ class TestStructure(unittest.TestCase):
 
         nodes = np.array([[1, 0, 0, 0, 1], [0, 1, 0, 1, 1], [0, 0, 2, 1, 3]])
         nodes_tags = {
-            'nags0': np.array([0, 3], dtype=np.uint64),
-            'nags1': np.array([1, 2], dtype=np.uint64)
+            'nags0': np.array([0, 3], dtype=np.int64),
+            'nags1': np.array([1, 2], dtype=np.int64)
         }
         members = np.array([[0, 1, 2, 3], [1, 2, 0, 4]])
         members_tag = {
-            'mags0': np.array([0], dtype=np.uint64),
-            'mags1': np.array([1, 2], dtype=np.uint64)
+            'mags0': np.array([0], dtype=np.int64),
+            'mags1': np.array([1, 2], dtype=np.int64)
         }
         s = Structure(nodes, members, number_of_strings=2, node_tags=nodes_tags, member_tags=members_tag)
 
@@ -753,13 +753,13 @@ class TestStructure(unittest.TestCase):
 
         nodes = np.array([[1, 0, 0, 0, 1], [0, 1, 0, 1, 1], [0, 0, 2, 1, 3]])
         nodes_tags = {
-            'nags0': np.array([0, 3], dtype=np.uint64),
-            'nags1': np.array([1, 2], dtype=np.uint64)
+            'nags0': np.array([0, 3], dtype=np.int64),
+            'nags1': np.array([1, 2], dtype=np.int64)
         }
         members = np.array([[0, 1, 2, 3], [1, 2, 0, 4]])
         members_tag = {
-            'mags0': np.array([0], dtype=np.uint64),
-            'mags1': np.array([1, 2], dtype=np.uint64)
+            'mags0': np.array([0], dtype=np.int64),
+            'mags1': np.array([1, 2], dtype=np.int64)
         }
         s = Structure(nodes, members, number_of_strings=2, node_tags=nodes_tags, member_tags=members_tag)
         s.node_properties.loc[2, 'constraint'] = NodeConstraint()
@@ -773,6 +773,33 @@ class TestStructure(unittest.TestCase):
         R, T = NodeConstraint.node_constraint(s.nodes, s.node_properties['constraint'])
         self.assertEqual(R.shape, (4, 15))
         self.assertEqual(T.shape, (15, 11))
+
+    def test_dependent_nodes(self):
+
+        nodes = np.array([[1, 0, 0, 0, 1, 1/2], [0, 1, 0, 1, 1, 1/2], [0, 0, 2, 1, 3, 0]])
+        nodes_tags = {
+            'nags0': np.array([0, 3], dtype=np.int64),
+            'nags1': np.array([1, 2], dtype=np.int64)
+        }
+        members = np.array([[0, 1, 2, 3, 0, 1], [1, 2, 0, 4, 5, 5]])
+        members_tag = {
+            'mags0': np.array([0], dtype=np.int64),
+            'mags1': np.array([1, 2, 5], dtype=np.int64)
+        }
+        s = Structure(nodes, members, number_of_strings=2, node_tags=nodes_tags, member_tags=members_tag)
+        np.testing.assert_array_equal(s.get_members_per_node(), [3, 3, 2, 1, 1, 2])
+        np.testing.assert_array_equal(s.get_colinear_nodes(), [5])
+        dep_nodes, dep_members = s.get_colinear_nodes(return_members=True)
+        np.testing.assert_array_equal(dep_nodes, [5])
+        np.testing.assert_array_equal(dep_members, [[4, 5]])
+
+        s.merge_colinear_nodes()
+        self.assertEqual(s.get_number_of_nodes(), 5)
+        self.assertEqual(s.get_number_of_members(), 5)
+        np.testing.assert_array_equal(s.nodes, nodes[:, :-1])
+        np.testing.assert_array_equal(s.members, np.array([[0, 1, 2, 3, 0], [1, 2, 0, 4, 1]]))
+        np.testing.assert_array_equal(s.member_tags['bar'], [2, 3, 4])
+        np.testing.assert_array_equal(s.member_tags['mags1'], [1, 2, 4])
 
 
 if __name__ == '__main__':

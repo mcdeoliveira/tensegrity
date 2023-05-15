@@ -94,6 +94,18 @@ def orthogonalize(a: npt.NDArray, epsilon: float = 1e-8, mode: Literal['reduced'
         return rank, q[:, :rank]
 
 
+def is_colinear(a: npt.NDArray, b: npt.NDArray, epsilon: float = 1e-8) -> bool:
+    """
+    Two vectors are colinear if their orthogonal projection is small
+
+    :param a: first vector
+    :param b: second vector
+    :param epsilon: accuracy
+    :return: ``True`` if colinear
+    """
+    return np.linalg.norm(a - (np.dot(a, b) / np.dot(b, b)) * b) < epsilon * np.linalg.norm(a)
+
+
 def norm(a: Union[npt.NDArray, scipy.sparse.csr_matrix]) -> float:
     """
     :param a: the array

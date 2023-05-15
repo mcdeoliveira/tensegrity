@@ -144,5 +144,5 @@ class MatplotlibPlotter(Plotter):
                         MatplotlibPlotter.plot_line(self.ax, nodes, members[0, j], members[1, j], **kwargs)
                     else:
                         # plot others as solid elements
-                        kwargs = s.get_member_properties(j, ['facecolor', 'edgecolor', 'volume']).to_dict()
+                        kwargs = s.get_member_properties(j, ['facecolor', 'edgecolor', 'volume', 'radius']).to_dict()
                         MatplotlibPlotter.plot_solid_cylinder(self.ax, nodes, members[0, j], members[1, j], **kwargs)

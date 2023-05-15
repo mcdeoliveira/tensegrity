@@ -1,8 +1,9 @@
+import itertools
 import warnings
 from dataclasses import dataclass
 from functools import reduce
 from typing import Optional, Dict, get_type_hints, Union, List, Sequence, Type, Iterable, Tuple, Set, Any
-from collections import ChainMap
+from collections import ChainMap, defaultdict
 
 import numpy as np
 import numpy.typing as npt
@@ -12,6 +13,7 @@ import scipy
 from . import utils
 from . import optim
 from .stiffness import Stiffness, NodeConstraint
+from .utils import is_colinear
 
 
 class Property:
@@ -93,20 +95,20 @@ class Structure:
                  nodes: npt.ArrayLike = np.zeros((3, 0), np.float_),
                  members: npt.ArrayLike = np.zeros((2, 0), np.int64),
                  number_of_strings: int = 0,
-                 node_tags: Optional[Dict[str, npt.NDArray[np.uint64]]] = None,
-                 member_tags: Optional[Dict[str, npt.NDArray[np.uint64]]] = None,
+                 node_tags: Optional[Dict[str, npt.NDArray[np.int64]]] = None,
+                 member_tags: Optional[Dict[str, npt.NDArray[np.int64]]] = None,
                  label: str = None):
         # label
         self.label: Optional[str] = label
         # nodes
         self.nodes: npt.NDArray[np.float_] = np.zeros((3, 0), np.float_)
-        self.node_tags: Dict[str, npt.NDArray[np.uint64]] = {}
+        self.node_tags: Dict[str, npt.NDArray[np.int64]] = {}
         self.node_properties: pd.DataFrame = Structure.NodeProperty.to_dataframe()
         # members
-        self.members: npt.NDArray[np.uint64] = np.zeros((2, 0), np.uint64)
-        self.member_tags: Dict[str, npt.NDArray[np.uint64]] = {
-            'bar': np.zeros((0,), np.uint64),
-            'string': np.zeros((0,), np.uint64)
+        self.members: npt.NDArray[np.int64] = np.zeros((2, 0), np.int64)
+        self.member_tags: Dict[str, npt.NDArray[np.int64]] = {
+            'bar': np.zeros((0,), np.int64),
+            'string': np.zeros((0,), np.int64)
         }
         self.member_properties: pd.DataFrame = Structure.MemberProperty.to_dataframe()
 
@@ -159,7 +161,7 @@ class Structure:
         self.nodes: npt.NDArray[np.float_] = nodes
 
     def add_nodes(self, nodes: npt.ArrayLike,
-                  node_tags: Optional[Dict[str, npt.NDArray[np.uint64]]] = None) -> None:
+                  node_tags: Optional[Dict[str, npt.NDArray[np.int64]]] = None) -> None:
         """
         Add nodes to the ``Structure``
 
@@ -276,7 +278,7 @@ class Structure:
 
         return self
 
-    def get_unused_nodes(self) -> npt.NDArray[np.uint64]:
+    def get_unused_nodes(self) -> npt.NDArray[np.int64]:
         """
         :return: an array with the indices of the unused nodes
         """
@@ -291,37 +293,75 @@ class Structure:
         """
         return len(self.get_unused_nodes()) > 0
 
-    def remove_nodes(self, nodes_to_be_deleted: Optional[npt.ArrayLike] = None,
+    def get_members_per_node(self) -> npt.NDArray:
+        """
+        :return: number of members connected to each node
+        """
+        return np.bincount(self.members.ravel(), minlength=self.get_number_of_nodes())
+
+    def get_colinear_nodes(self, epsilon: float = 1e-8, return_members: bool = False) -> \
+            Union[npt.NDArray[np.int64], Tuple[npt.NDArray[np.int64], npt.NDArray[np.int64]]]:
+        """
+        :params epsilon: accuracy of co-linearity test
+        :params return_members: if ``True`` returns tuple of member indices as well
+        :return: an array with the indices of the co-linear nodes or
+                 tuple with an array with the indices of the co-linear nodes and an array with the member indices
+
+        **Notes:**
+        1. Co-linear nodes are nodes that have only 2 co-linear members connected to them
+        """
+        # find nodes connected to only 2 members
+        dependent_nodes = np.nonzero(self.get_members_per_node() == 2)[0]
+        # loop through members with dependent nodes
+        colinear_nodes = []
+        colinear_members = []
+        for node in dependent_nodes:
+            # get members
+            member_indices = np.any(self.members == node, axis=0)
+            node_indices = self.members[:, member_indices]
+            members = self.nodes[:, node_indices[1]] - self.nodes[:, node_indices[0]]
+            # is colinear if projection is small
+            if is_colinear(members[:, 0], members[:, 1], epsilon):
+                colinear_nodes.append(node)
+                if return_members:
+                    colinear_members.append(np.nonzero(member_indices)[0])
+        # return only co-linear nodes
+        if return_members:
+            return np.array(colinear_nodes, dtype=np.int64), np.array(colinear_members, dtype=np.int64)
+        else:
+            return np.array(colinear_nodes, dtype=np.int64)
+
+    def remove_nodes(self, nodes_to_be_removed: Optional[npt.ArrayLike] = None,
                      verify_if_unused: bool = True, verbose: bool = False) -> None:
         """
         Remove nodes from structure
 
-        :param nodes_to_be_deleted: the indices of the nodes to be deleted; if ``None``,
+        :param nodes_to_be_removed: the indices of the nodes to be deleted; if ``None``,
                                     delete all currently unused nodes
         :param verify_if_unused: if ``True`` verifies if the nodes to be deleted are not in use
         :param verbose: if ``True`` warns of the nodes to be deleted
         """
-        if nodes_to_be_deleted is None:
+        if nodes_to_be_removed is None:
             # delete all unused nodes
             unused_nodes_to_be_deleted = self.get_unused_nodes()
         elif verify_if_unused:
             # sort nodes to be deleted
-            nodes_to_be_deleted = np.unique(nodes_to_be_deleted)
+            nodes_to_be_removed = np.unique(nodes_to_be_removed)
             # calculate nodes that are in use
             used_nodes = np.unique(self.members)
             # find unused nodes
-            unused_nodes_to_be_deleted = np.setdiff1d(nodes_to_be_deleted, used_nodes, assume_unique=True)
+            unused_nodes_to_be_deleted = np.setdiff1d(nodes_to_be_removed, used_nodes, assume_unique=True)
             # warn if different
-            number_of_used_nodes = len(nodes_to_be_deleted) - len(unused_nodes_to_be_deleted)
+            number_of_used_nodes = len(nodes_to_be_removed) - len(unused_nodes_to_be_deleted)
             if number_of_used_nodes:
                 warnings.warn(f'{number_of_used_nodes} nodes are still in use and were not deleted')
                 if verbose:
                     warnings.warn('The following nodes will not be removed: ' 
-                                  f'{np.intersect1d(nodes_to_be_deleted, used_nodes, assume_unique=True)}')
+                                  f'{np.intersect1d(nodes_to_be_removed, used_nodes, assume_unique=True)}')
         else:
             # go ahead without verifying if nodes are unused
             # WARNING: this may result in orphan members!
-            unused_nodes_to_be_deleted = nodes_to_be_deleted
+            unused_nodes_to_be_deleted = nodes_to_be_removed
         # delete if there are any unused nodes
         if len(unused_nodes_to_be_deleted):
             if verbose:
@@ -344,18 +384,18 @@ class Structure:
 
     def add_members(self, members: npt.ArrayLike,
                     number_of_strings: Optional[int] = None,
-                    member_tags: Optional[Dict[str, npt.NDArray[np.uint64]]] = None) -> None:
+                    member_tags: Optional[Dict[str, npt.NDArray[np.int64]]] = None) -> None:
         """
         Add members and tags to current structure
 
         :param members: the members to be added
         :param number_of_strings: the number of strings; if not ``None``,  then the first `number_of_strings` members
                                   are tagged as 'strings' and the remaining members as 'bars'
-        :param  member_tags: the new members' tags
+        :param member_tags: the new members' tags
         """
 
         # convert to array
-        members = np.array(members, np.uint64)
+        members = np.array(members, np.int64)
 
         # test dimensions
         assert members.shape[0] == 2, 'members must be a 2 x m array'
@@ -372,8 +412,8 @@ class Structure:
                 'number of added strings must be less than number of added members'
             number_of_new_bars = number_of_new_members - number_of_strings
             new_member_tags = {
-                'string': np.arange(0, number_of_strings, dtype=np.uint64),
-                'bar': number_of_strings + np.arange(0, number_of_new_bars, dtype=np.uint64)
+                'string': np.arange(0, number_of_strings, dtype=np.int64),
+                'bar': number_of_strings + np.arange(0, number_of_new_bars, dtype=np.int64)
             }
 
         # if tags were given
@@ -447,6 +487,60 @@ class Structure:
             self.member_tags = {k: new_members_map[np.setdiff1d(v, members_to_be_deleted)]
                                  for k, v in self.member_tags.items()}
 
+    def merge_colinear_nodes(self, epsilon: float = 1e-8) -> None:
+        """
+        Merge members in co-linear nodes
+
+        See :meth:`tnsgrt.structure.Structure.get_colinear_nodes`
+
+        :param epsilon: accuracy of co-linearity test
+
+        **Notes:**
+        1. If the co-linear members are a bar and a string, the node and members are skipped
+        2. New member inherit all tag from co-linear members
+        3. All dependent nodes are removed and co-linear members are replaced
+        """
+        # get dependent nodes
+        dependent_nodes, dependent_members = self.get_colinear_nodes(return_members=True, epsilon=epsilon)
+        # loop to create new members
+        new_members = np.zeros((2, len(dependent_nodes)), dtype=np.int64)
+        new_member_tags = defaultdict(list)
+        new_members_to_skip = []
+        members_to_be_removed = []
+        nodes_to_be_removed = []
+        for i, (node, member_indices) in enumerate(zip(dependent_nodes, dependent_members)):
+            # create member with nodes that are not equal to node
+            member_nodes = self.members[:, member_indices]
+            new_members[:, i] = member_nodes[member_nodes != node]
+            # collect member tags
+            tags = set(itertools.chain(*[self.get_member_tags(member) for member in member_indices]))
+            if 'string' in tags and 'bar' in tags:
+                new_members_to_skip.append(i)
+                warnings.warn(f"Dependent node '{node}' is connected to a bar and a string and cannot be merged")
+            else:
+                # add node to list of nodes to be removed
+                nodes_to_be_removed.append(node)
+                # add to members to remove
+                members_to_be_removed.extend(member_indices)
+                # offset id to match reduced new member numbering
+                new_member_id = i - len(new_members_to_skip)
+                # add tags to new member
+                for tag in tags:
+                    new_member_tags[tag].append(new_member_id)
+        # trim new_members
+        new_members = np.delete(new_members, new_members_to_skip, axis=1)
+        if new_members.shape[1] == 0:
+            # return if nothing to add
+            return
+        # make sure member tags are unique
+        new_member_tags = {k: np.unique(v).astype(dtype=np.int64) for k, v in new_member_tags.items()}
+        # remove old members
+        self.remove_members(members_to_be_removed)
+        # add new members
+        self.add_members(members=new_members, member_tags=new_member_tags)
+        # remove nodes
+        self.remove_nodes(nodes_to_be_removed)
+
     def get_number_of_members(self) -> int:
         """
         :return: the number of members in ``Structure``
@@ -472,7 +566,7 @@ class Structure:
         """
         return tag in self.member_tags and index in self.member_tags[tag]
 
-    def get_members_by_tags(self, tags: Sequence[str]) -> npt.NDArray[np.uint64]:
+    def get_members_by_tags(self, tags: Sequence[str]) -> npt.NDArray[np.int64]:
         """
         Return a list of member indices that have tags in the sequence ``tags``
 
@@ -507,7 +601,7 @@ class Structure:
         if tag in self.member_defaults:
             del self.member_defaults[tag]
 
-    def set_member_tag(self, tag: str, indices: npt.NDArray[np.uint64]) -> None:
+    def set_member_tag(self, tag: str, indices: npt.NDArray[np.int64]) -> None:
         """
         Associate members with indices in ``indices`` to the new tag ``tag``
 
@@ -532,7 +626,7 @@ class Structure:
         # set tag
         self.member_tags[tag] = v
 
-    def add_member_tag(self, tag: str, indices: npt.NDArray[np.uint64]) -> None:
+    def add_member_tag(self, tag: str, indices: npt.NDArray[np.int64]) -> None:
         """
         Add members with indices in ``indices`` to the existing member tag ``tag``
 
@@ -550,7 +644,7 @@ class Structure:
         # set tag
         self.member_tags[tag] = np.union1d(self.member_tags[tag], indices)
 
-    def remove_member_tag(self, tag: str, indices: npt.NDArray[np.uint64]) -> None:
+    def remove_member_tag(self, tag: str, indices: npt.NDArray[np.int64]) -> None:
         """
         Remove members with indices in ``indices`` from the existing member tag ``tag``
 
@@ -572,7 +666,7 @@ class Structure:
         if tag in self.node_defaults:
             del self.node_defaults[tag]
 
-    def set_node_tag(self, tag: str, indices: npt.NDArray[np.uint64]) -> None:
+    def set_node_tag(self, tag: str, indices: npt.NDArray[np.int64]) -> None:
         """
         Associate nodes with indices in ``indices`` to the new tag ``tag``
 
@@ -595,7 +689,7 @@ class Structure:
         # set tag
         self.node_tags[tag] = v
 
-    def add_node_tag(self, tag: str, indices: npt.NDArray[np.uint64]) -> None:
+    def add_node_tag(self, tag: str, indices: npt.NDArray[np.int64]) -> None:
         """
         Add nodes with indices in ``indices`` to the existing node tag ``tag``
 
@@ -612,7 +706,7 @@ class Structure:
         # set tag
         self.node_tags[tag] = np.union1d(self.node_tags[tag], indices)
 
-    def remove_node_tag(self, tag: str, indices: npt.NDArray[np.uint64]) -> None:
+    def remove_node_tag(self, tag: str, indices: npt.NDArray[np.int64]) -> None:
         """
         Remove nodes with indices in ``indices`` from the existing node tag ``tag``
 
