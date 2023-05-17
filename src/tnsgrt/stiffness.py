@@ -1,5 +1,7 @@
 import warnings
-from typing import Optional, Tuple, Sequence, Union, Literal
+from typing import Optional, Tuple, Sequence, Union
+from typing_extensions import Literal
+
 import numpy as np
 import numpy.typing as npt
 import scipy

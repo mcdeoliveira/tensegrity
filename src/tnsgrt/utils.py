@@ -1,5 +1,6 @@
 from enum import Enum
-from typing import Literal, Tuple, Union
+from typing import Tuple, Union
+from typing_extensions import Literal
 
 import numpy as np
 import numpy.typing as npt
