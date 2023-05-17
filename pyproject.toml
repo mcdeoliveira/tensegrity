@@ -30,7 +30,8 @@ dependencies = [
     "cvxpy",
     "vispy",
     "parameterized",
-    "more-itertools"
+    "more-itertools",
+    "typing-extensions"
 ]
 
 [project.urls]
