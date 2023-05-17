@@ -6,3 +6,4 @@ cvxpy
 vispy
 parameterized
 more-itertools
+typing-extensions
