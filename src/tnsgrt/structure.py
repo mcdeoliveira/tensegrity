@@ -1163,7 +1163,7 @@ pandas.DataFrame.loc.html>`_
     def equilibrium(self,
                     force: Optional[npt.ArrayLike] = None,
                     lambda_bar: Optional[float] = None,
-                    equalities: Optional[list[npt.ArrayLike]] = None,
+                    equalities: Optional[List[npt.ArrayLike]] = None,
                     epsilon: float = 1e-7) -> None:
         """
         Solves for the set of internal forces that ensures the equilibrium of the
