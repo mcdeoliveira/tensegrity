@@ -98,9 +98,10 @@ class VisPyPlotter(Plotter):
                         vis.parent = self.view.scene
                     else:
                         # plot others as solid elements
-                        kwargs = s.get_member_properties(j, 'facecolor').to_dict()
+                        kwargs = s.get_member_properties(j, 'facecolor',
+                                                         'radius').to_dict()
                         kwargs['color'] = kwargs['facecolor']
                         del kwargs['facecolor']
                         line = nodes[:, [members[0, j], members[1, j]]].transpose()
-                        vis = vispyscene.visuals.Tube(line, radius=.025, **kwargs)
+                        vis = vispyscene.visuals.Tube(line, **kwargs)
                         vis.parent = self.view.scene
