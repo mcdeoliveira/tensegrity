@@ -42,8 +42,8 @@ class TestSnelson(unittest.TestCase):
         lambda_ = np.hstack((
             rho * np.cos(np.pi / p) / np.cos(alpha - np.pi / p) * np.ones((p,)),
             (1 / rho) * np.cos(np.pi / p) / np.cos(alpha - np.pi / p) * np.ones((p,)),
-            2 * np.cos(alpha) * np.cos(np.pi / p) \
-               / np.cos(alpha - np.pi / p) * np.ones((p,)),
+            2 * np.cos(alpha) * np.cos(np.pi / p)
+            / np.cos(alpha - np.pi / p) * np.ones((p,)),
             -np.cos(alpha + np.pi / p) / np.cos(alpha - np.pi / p) * np.ones((p,)),
             -np.ones((p,))
         ))

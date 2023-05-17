@@ -53,8 +53,9 @@ class TestStructure(unittest.TestCase):
         s.equilibrium(f/2, lambda_bar=2)
 
         # no external force, normalize not one
-        lmbda = np.array([0., 1/2., 0., 1/2., -1/2., -1/2.]) - \
-                3/2*np.array([-1., -1., -1., -1., 1., 1])
+        lmbda = \
+            np.array([0., 1/2., 0., 1/2., -1/2., -1/2.]) - \
+            3/2*np.array([-1., -1., -1., -1., 1., 1])
         np.testing.assert_allclose(s.member_properties['lambda_'], lmbda, atol=1e-6)
         self.assertTrue(np.abs(np.mean(
             s.get_member_properties(s.get_members_by_tag('bar'),
@@ -109,4 +110,5 @@ class TestStructure(unittest.TestCase):
         lmbda = np.array([0., 1., -1/2.]) - 3/2*np.array([-2., -2., 1.])
         np.testing.assert_allclose(s.member_properties['lambda_'], lmbda, atol=1e-6)
         self.assertTrue(np.abs(np.mean(
-            s.get_member_properties(s.get_members_by_tag('bar'), 'lambda_')) + 2) < 1e-6)
+            s.get_member_properties(
+                s.get_members_by_tag('bar'), 'lambda_')) + 2) < 1e-6)
