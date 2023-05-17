@@ -1,5 +1,3 @@
-from typing import Sequence, Union
-
 from tnsgrt.structure import Structure
 from .plotter import Plotter
 

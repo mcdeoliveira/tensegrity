@@ -304,7 +304,8 @@ class Stiffness:
     such that
 
     .. math::
-        V = \\frac{1}{2} y^T K y + \\frac{1}{2} \\ddot{y}^T M \\ddot{y}, \\qquad R \\, x = 0, \\qquad x = T y
+        V = \\frac{1}{2} y^T K y + \\frac{1}{2} \\ddot{y}^T M \\ddot{y},
+        \\qquad R \\, x = 0, \\qquad x = T y
 
     Constructor parameters:
 
@@ -331,7 +332,8 @@ class Stiffness:
     4. Node constraints are enforced to be orthogonal so that
 
        .. math::
-           R \\, x = 0, \\quad x = T y, \\qquad R R^T = I, \\quad T^T T = I, \\quad R \\, T = 0
+           R \\, x = 0, \\quad x = T y, \\qquad R R^T = I,
+           \\quad T^T T = I, \\quad R \\, T = 0
     """
 
     def __init__(self,
@@ -352,7 +354,8 @@ class Stiffness:
 
     def apply_constraint(self,
                          R: Union[npt.NDArray, scipy.sparse.csr_matrix],
-                         T: Optional[Union[npt.NDArray, scipy.sparse.csr_matrix]] = None,
+                         T: Optional[Union[npt.NDArray, \
+                                           scipy.sparse.csr_matrix]] = None,
                          local: bool = True, epsilon: float = 1e-8):
         """
         Apply the constraint
@@ -373,12 +376,14 @@ class Stiffness:
         1. If ``local = True`` and the current constraints are
 
            .. math::
-               R_y \\, x = 0, \\quad x = T_y \\, y, \\qquad R^{}_y R_y^T = I, \\quad T_y^T T^{}_y = I, \\quad R_y T_y = 0
+               R_y \\, x = 0, \\quad x = T_y \\, y, \\qquad R^{}_y R_y^T = I,
+               \\quad T_y^T T^{}_y = I, \\quad R_y T_y = 0
 
            then after applying the new constraints
 
            .. math::
-               R \\, y = R \\, T_y^T x = R_z x = 0, \\qquad x = T_y \\, y = T_y T z = T_z z,
+               R \\, y = R \\, T_y^T x = R_z x = 0, \\qquad x = T_y \\,
+               y = T_y T z = T_z z,
 
            in which
 
@@ -388,7 +393,8 @@ class Stiffness:
            and
 
            .. math::
-               V = \\frac{1}{2} z^T K_z \\, z + \\frac{1}{2} \\ddot{z}^T M_z \\, \\ddot{z}, \\qquad R_z x = 0, \\quad x = R_z \\, z,
+               V = \\frac{1}{2} z^T K_z \\, z + \\frac{1}{2} \\ddot{z}^T M_z \\,
+               \\ddot{z}, \\qquad R_z x = 0, \\quad x = R_z \\, z,
 
            in which
 
