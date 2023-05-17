@@ -1,5 +1,6 @@
 import collections
 import itertools
+import more_itertools
 import warnings
 from dataclasses import dataclass
 from functools import reduce
@@ -234,13 +235,15 @@ class Structure:
 
     def rotate(self, v: npt.NDArray) -> 'Structure':
         """
-        Rotate all nodes of the ``Structure`` by the 3D vector ``normal``
+        Rotate all nodes of the ``Structure`` by the 3D vector ``v``
 
         :param v: the 3D rotation vector
         :return: self
+
+        **Notes:**
+
+        1. See :meth:`scipy.spatial.transform.Rotation.from_rotvec` for details
         """
-        # `rotate(normal)` rotates the nodes of the structure around the 3D vector `normal`
-        # the magnitude of the vector equals the rotation angle in radians
         assert v.shape == (3,), 'normal must be a three dimensional vector'
         rotation = scipy.spatial.transform.Rotation.from_rotvec(v)
         self.nodes = rotation.apply(self.nodes.transpose()).transpose()
@@ -248,7 +251,7 @@ class Structure:
 
     def reflect(self, v: npt.NDArray, p: Optional[npt.NDArray] = None) -> 'Structure':
         """
-        Reflects the structure about a plane normal to the vector `normal`, passing through the point `p`.
+        Reflects the structure about a plane normal to the vector `v`, passing through the point `p`.
         If no point is given, it defaults to the origin.
 
         :param v: the 3D normal vector
@@ -295,6 +298,30 @@ class Structure:
         """
         return len(self.get_unused_nodes()) > 0
 
+    def get_nodes_by_tag(self, *tag: str) -> npt.NDArray[np.int64]:
+        """
+        Return a list of node indices that have given tags
+
+        :param \\*tag: the tag
+        :return: list of node indices
+        """
+        if len(tag) == 0:
+            return np.zeros((0,))
+        elif len(tag) == 1:
+            return self.node_tags.get(tag[0], np.zeros((0,)))
+        else:
+            return reduce(lambda a1, a2: np.intersect1d(a1, a2, assume_unique=True),
+                          [v for k, v in self.node_tags.items() if k in tag])
+
+    def get_number_of_members_by_tag(self, tag: str) -> int:
+        """
+        Return the number of members with tag ``tag``
+
+        :param tag: the tags
+        :return: the number of members
+        """
+        return len(self.member_tags.get(tag, []))
+
     def get_members_per_node(self) -> npt.NDArray:
         """
         :return: number of members connected to each node
@@ -310,6 +337,7 @@ class Structure:
                  tuple with an array with the indices of the co-linear nodes and an array with the member indices
 
         **Notes:**
+
         1. Co-linear nodes are nodes that have only 2 co-linear members connected to them
         """
         # find nodes connected to only 2 members
@@ -498,6 +526,7 @@ class Structure:
         :param epsilon: accuracy of co-linearity test
 
         **Notes:**
+
         1. If the co-linear members are a bar and a string, the node and members are skipped
         2. New member inherit all tag from co-linear members
         3. All dependent nodes are removed and co-linear members are replaced
@@ -548,8 +577,10 @@ class Structure:
         Merge overlapping members in structure
 
         **Notes:**
+
         1. Overlapping members are members that share the same set of nodes
-        2. The properties 'lambda_', 'force', 'mass', and 'volume' are summed on the merged member
+        2. The properties 'lambda\_', 'force', 'mass', and 'volume' are summed on the merged member
+        3. The remaining member has as tags the union of all tags in the merged members
         """
         # sort members
         sorted_members = np.sort(self.members, axis=0)
@@ -576,9 +607,19 @@ class Structure:
                 self.member_properties.loc[repeated, ['force', 'lambda_', 'mass', 'volume']].sum()
             # merge member tags
             existing_tags = set(self.get_member_tags(repeated[0]))
-            repeated_tags = set(*[self.get_member_tags(j) for j in repeated[1:]])
+            repeated_tags = set(itertools.chain(*[self.get_member_tags(j) for j in repeated[1:]]))
             new_tags = repeated_tags - existing_tags
-            # TODO: warn of change of sign
+            # look for change of character
+            is_bar = 'bar' in existing_tags
+            if (is_bar and 'string' in new_tags) or (not is_bar and 'bar' in new_tags):
+                # check for sign of force coefficient
+                lambda_ = self.member_properties.loc[repeated[0], 'lambda_']
+                if is_bar and lambda_ > 0:
+                    del existing_tags['bar']
+                    warnings.warn(f"member {repeated[0]} changed from 'bar' to 'string'")
+                elif not is_bar and lambda_ < 0:
+                    del existing_tags['string']
+                    warnings.warn(f"member {repeated[0]} changed from 'string' to 'bar'")
             tags_to_be_added[repeated[0]] = new_tags
             # which members to remove?
             members_to_be_removed.extend(repeated[1:])
@@ -600,7 +641,6 @@ class Structure:
         :return: the index of members with small force coefficients
         """
         return self.member_properties.index[self.member_properties['lambda_'].abs() < epsilon]
-        # return self.member_properties.index[-epsilon < self.member_properties['lambda_'] < epsilon]
 
     def get_number_of_members(self) -> int:
         """
@@ -617,19 +657,6 @@ class Structure:
         """
         return [k for k, v in self.member_tags.items() if index in v]
 
-    # def set_member_tags(self, index: int, tags: list[str]) -> None:
-    #     """
-    #     Set A list with the tags for the member with index ``index``
-    #
-    #     :param index: the index of the member
-    #     :param tags: the tags to set
-    #     :return: list of tags
-    #     """
-    #     for tag in tags:
-    #         member_tags = self.member_tags[tag]
-    #         if index not in member_tags:
-    #             self.member_tags[tag] = insert_sorted(member_tags, index)
-
     def has_member_tag(self, index: int, tag: str) -> bool:
         """
         Return ``True`` if member with index ``index`` has tag ``tag``
@@ -640,20 +667,20 @@ class Structure:
         """
         return tag in self.member_tags and index in self.member_tags[tag]
 
-    def get_members_by_tags(self, tags: Sequence[str]) -> npt.NDArray[np.int64]:
+    def get_members_by_tag(self, *tag: str) -> npt.NDArray[np.int64]:
         """
-        Return a list of member indices that have tags in the sequence ``tags``
+        Return a list of member indices that have given tags
 
-        :param tags: the sequence of tags
+        :param \\*tag: the tag
         :return: list of member indices
         """
-        if len(tags) == 0:
+        if len(tag) == 0:
             return np.zeros((0,))
-        elif len(tags) == 1:
-            return self.member_tags.get(tags[0], np.zeros((0,)))
+        elif len(tag) == 1:
+            return self.member_tags.get(tag[0], np.zeros((0,)))
         else:
             return reduce(lambda a1, a2: np.intersect1d(a1, a2, assume_unique=True),
-                          [v for k, v in self.member_tags.items() if k in tags])
+                          [v for k, v in self.member_tags.items() if k in tag])
 
     def get_number_of_members_by_tag(self, tag: str) -> int:
         """
@@ -675,7 +702,7 @@ class Structure:
         if tag in self.member_defaults:
             del self.member_defaults[tag]
 
-    def add_member_tag(self, tag: str, indices: npt.NDArray[np.int64]) -> None:
+    def add_member_tag(self, tag: str, indices: Union[int, npt.NDArray[np.int64]]) -> None:
         """
         Add members with indices in ``indices`` to the member tag ``tag``
 
@@ -684,6 +711,10 @@ class Structure:
         :param tag: the member tag
         :param indices: the member indices
         """
+
+        # put int in a list
+        if isinstance(indices, int):
+            indices = [indices]
 
         # quick return
         if len(indices) == 0:
@@ -735,6 +766,10 @@ class Structure:
         :param indices: the node indices
         """
 
+        # put int in a list
+        if isinstance(indices, int):
+            indices = [indices]
+
         # quick return
         if len(indices) == 0:
             return
@@ -765,7 +800,7 @@ class Structure:
 
     @staticmethod
     def _set_dataframe(df: pd.DataFrame, index: Union[int, Sequence[int], slice], labels: Union[str, Sequence[str]],
-                       values: Any, wrap: bool = False, scalar: bool = True) -> None:
+                       values: Any, scalar: bool = True) -> None:
         """
         Auxiliary set method to wrap values when setting dataframe
 
@@ -773,7 +808,6 @@ class Structure:
         :param index: the row index
         :param labels: the column label(s)
         :param values: the values to set to
-        :param wrap: if ``True``, wraps ``value`` in a ``Series`` or ``Dataframe`` before assignment
         :param scalar: if ``True``, ``value`` is set to an array of len(index)
 
         **Notes:**
@@ -782,23 +816,23 @@ class Structure:
            See `this question <https://stackoverflow.com/questions/48000225/must-have-equal-len-keys-and-value-when-setting-with-an-iterable>`_
            for details.
         """
-        if wrap:
-            if isinstance(index, int):
-                idx = index = [index]
-                m = 1
-            else:
-                idx = df.index[index]
-                m = len(idx)
-            if scalar:
-                values = [values] * m
-            if isinstance(labels, str):
-                values = pd.Series(values, index=idx)
-            else:
-                values = pd.DataFrame(values, index=idx)
+        if isinstance(index, int):
+            idx = index = [index]
+            m = 1
+        else:
+            idx = df.index[index]
+            m = len(idx)
+        if scalar:
+            values = [values] * m
+        if isinstance(labels, str):
+            values = pd.Series(values, index=idx)
+        else:
+            values = pd.DataFrame(values, index=idx)
         df.loc[index, labels] = values
 
-    def set_member_properties(self, index: Union[int, Sequence[int], slice], labels: Union[str, Sequence[str]],
-                              values: Any, wrap: bool = False, scalar: bool = True) -> None:
+    def set_member_properties(self, index: Union[int, Sequence[int], slice],
+                              labels: Union[str, Sequence[str]], values: Any, *vargs,
+                              scalar: bool = True) -> None:
         """
         Set member properties
 
@@ -807,28 +841,31 @@ class Structure:
         :param index: the element index
         :param labels: the property label(s)
         :param values: the values to set to
-        :param wrap: if ``True``, wraps ``value`` in a ``Series`` or ``Dataframe`` before assignment
+        :param \\*vargs: label/values pairs
         :param scalar: if ``True``, ``value`` is set to an array of len(index)
         """
-        Structure._set_dataframe(self.member_properties, index, labels, values, wrap, scalar)
+        Structure._set_dataframe(self.member_properties, index, labels, values, scalar=scalar)
+        for lv in more_itertools.batched(vargs, 2):
+            Structure._set_dataframe(self.member_properties, index, *lv, scalar=scalar)
 
-    def get_member_properties(self, index: Union[int, Sequence[int], slice], labels: Union[str, List[str]])\
+    def get_member_properties(self, index: Union[int, Sequence[int], slice], *labels: str)\
             -> pd.DataFrame:
         """
         Retrieve member properties
 
         :param index: the member index
-        :param labels: the member property labels
+        :param \\*labels: the member property labels
         :return: datafrome with the selected properties
 
         **WARNING:** :meth:`tnsgrt.structure.Structure.get_member_properties` uses pandas' `loc` method that includes
         the last element of slices; See `pandas documentation <https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.loc.html>`_
         for details
         """
-        return self.member_properties.loc[index, labels]
+        return self.member_properties.loc[index, labels[0] if len(labels) == 1 else list(labels)]
 
-    def set_node_properties(self, index: Union[int, Sequence[int], slice], labels: Union[str, Sequence[str]],
-                            values: Any, wrap: bool = False, scalar: bool = True) -> None:
+    def set_node_properties(self, index: Union[int, Sequence[int], slice],
+                            labels: Union[str, Sequence[str]], values: Any, *vargs,
+                            scalar: bool = True) -> None:
         """
         Set node properties
 
@@ -837,25 +874,27 @@ class Structure:
         :param index: the element index
         :param labels: the property label(s)
         :param values: the values to set to
-        :param wrap: if ``True``, wraps ``value`` in a ``Series`` or ``Dataframe`` before assignment
+        :param \\*vargs: label/values pairs
         :param scalar: if ``True``, ``value`` is set to an array of len(index)
         """
-        Structure._set_dataframe(self.node_properties, index, labels, values, wrap, scalar)
+        Structure._set_dataframe(self.node_properties, index, labels, values, scalar)
+        for lv in more_itertools.batched(vargs, 2):
+            Structure._set_dataframe(self.node_properties, index, *lv, scalar=scalar)
 
-    def get_node_properties(self, index: Union[int, Sequence[int], slice], labels: Union[str, List[str]])\
+    def get_node_properties(self, index: Union[int, Sequence[int], slice], *labels: str)\
             -> pd.DataFrame:
         """
         Retrieve node properties
 
         :param index: the node index
-        :param labels: the node property labels
+        :param \\*labels: the node property labels
         :return: datafrome with the selected properties
 
         **WARNING:** :meth:`tnsgrt.structure.Structure.get_node_properties` uses pandas' `loc` method that includes
         the last element of slices; See `pandas documentation <https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.loc.html>`_
         for details
         """
-        return self.node_properties.loc[index, labels]
+        return self.node_properties.loc[index, labels[0] if len(labels) == 1 else list(labels)]
 
     def get_member_vectors(self) -> npt.NDArray[np.float_]:
         """
@@ -1000,53 +1039,46 @@ class Structure:
             # remove nodes, to make sure the member node numbering is correct
             self.remove_nodes(nodes_to_be_removed, verify_if_unused=False, verbose=verbose)
 
-    def merge(self, s: 'Structure', inplace=False) -> Optional['Structure']:
+    def merge(self, s: 'Structure') -> None:
         """
-        Return a new ``Structure`` in which the current structure and ``s`` are merged
+        Merge ``s`` with the current structure
 
         :param s: the ``Structure`` to merge
-        :param inplace: if ``True`` merge is done in place without creating a copy
-        :return: the merged ``Structure``
         """
-
-        if inplace:
-            target = self
-        else:
-            target = self.copy()
 
         # offset members in s by number_of_members
         number_of_members = self.get_number_of_members()
         number_of_nodes = self.get_number_of_nodes()
 
         # merge nodes
-        target.nodes = np.hstack((self.nodes, s.nodes))
+        self.nodes = np.hstack((self.nodes, s.nodes))
 
         # merge node tags
         for k, v in s.node_tags.items():
             # append or add
-            target.node_tags[k] = np.hstack((self.node_tags[k], number_of_nodes + v)) \
+            self.node_tags[k] = np.hstack((self.node_tags[k], number_of_nodes + v)) \
                 if k in self.node_tags \
                 else number_of_nodes + v
 
         # merge node properties
-        target.node_properties = pd.concat((self.node_properties, s.node_properties), ignore_index=True)
+        self.node_properties = pd.concat((self.node_properties, s.node_properties), ignore_index=True)
 
         # merge members, offset by number of nodes
-        target.members = np.hstack((self.members, number_of_nodes + s.members))
+        self.members = np.hstack((self.members, number_of_nodes + s.members))
 
         # merge member tags
         for k, v in s.member_tags.items():
             # append or add
-            target.member_tags[k] = np.hstack((self.member_tags[k], number_of_members + v)) \
+            self.member_tags[k] = np.hstack((self.member_tags[k], number_of_members + v)) \
                 if k in self.member_tags \
                 else number_of_members + v
 
         # merge member properties
-        target.member_properties = pd.concat((self.member_properties, s.member_properties), ignore_index=True)
+        self.member_properties = pd.concat((self.member_properties, s.member_properties), ignore_index=True)
 
-        return target
-
-    def equilibrium(self, force: Optional[npt.ArrayLike] = None, lambda_bar: float = 1,
+    def equilibrium(self,
+                    force: Optional[npt.ArrayLike] = None,
+                    lambda_bar: Optional[float] = None,
                     equalities: Optional[list[npt.ArrayLike]] = None,
                     epsilon: float = 1e-7) -> None:
         """
@@ -1056,34 +1088,53 @@ class Structure:
         Solve the force equilibrium equation
 
         .. math::
-           A \\lambda = f
+           A \\lambda = f, \\quad \\lambda \\in \\Lambda
 
         in which:
 
         - :math:`A`: is a matrix representing the element vectors
         - :math:`f`: is the vector of external forces
-        - :math:`\\lambda`: is the vector of resulting force coefficients
+        - :math:`\\lambda`: is the vector of force coefficients
+        - :math:`\\Lambda`: is a set of constraints on the force coefficients (see Notes below)
 
-        If the :math:`i` th element is a string then
-
-        .. math::
-            x_i \\geq 0
-
-        If no external force is given then the sum of the bar force coefficients equals ``lambda_bar``
-
-        All elements in the equalities are set equal. For example, if::
-
-            equalities = [[0, 1, 3], [2, 4]]
-
-        then the equilibrium is shought satisfying the constraints
-
-        .. math::
-            x_0 = x_1 = x_3, \\qquad x_2 = x_4
-
-        :param force: a 3 x n array of external forces; or zero if `None`
+        :param force: a 3 x n array of external forces or ``None``
         :param lambda_bar: the normalizing factor
         :param equalities: a list of lists of member indices which are constrained to have the same force coefficient
         :param epsilon: numerical accuracy
+
+        **Notes:**
+
+        1. If the :math:`i` th element is a string then
+
+            .. math::
+                \\Lambda = \\{ \\lambda : \\qquad \\lambda_i \\geq 0 \\quad \\text{ if } i\\text{th element is a string} \\}
+
+        2. All elements in ``equalities`` are set equal. For example, if::
+
+               equalities = [[0, 1, 3], [2, 4]]
+
+           then the constraints
+
+            .. math::
+                \\lambda_0 = \\lambda_1 = \\lambda_3, \\qquad \\lambda_2 = \\lambda_4
+
+           are added to the constraint set :math:`\\Lambda`.
+
+        3. If ``force=None`` then the sum of the bar force coefficients equals ``lambda_bar``. That is,
+           the following modified problem is solved:
+
+            .. math::
+               A \\lambda = 0, \\quad \\mathbf{e}^T \\lambda = \\bar{\\lambda}, \\quad \\lambda \\in \\Lambda
+
+           in which :math:`\\mathbf{e}` is a vector that has `1` for bars and `0` for strings.
+
+        4. If ``force`` is not ``None`` and ``lambda_bar`` is also not ``None`` then the following problem is solved
+
+            .. math::
+                A \\lambda = f, \\quad \\mathbf{e}^T \\lambda = \\bar{\\lambda}, \\quad \\lambda \\in \\Lambda
+
+            **WARNING:** This problem may not be feasible for all :math:`\\bar{\\lambda} > 0`!
+
         """
 
         number_of_nodes = self.get_number_of_nodes()
@@ -1094,8 +1145,11 @@ class Structure:
         assert number_of_members == number_of_bars + number_of_strings, \
             'number of members is not equal to the sum of number of bars and strings'
 
+        assert lambda_bar is None or lambda_bar >= 0, 'lambda_bar cannot be negative'
+
         # member vectors
         member_vectors = self.get_member_vectors()
+        strings = self.member_tags['string']
 
         # coefficient matrix
         Aeq = np.zeros((3 * number_of_nodes, number_of_members))
@@ -1123,14 +1177,28 @@ class Structure:
         A = Aeq
         m = 3 * number_of_nodes
 
-        # external forces
+        # sum of the bars
+        ee = np.ones((1, number_of_members)) / self.get_number_of_members_by_tag('bar')
+        ee[:, strings] = 0
+        # TODO: do we need to worry if no bars?
+
         if force is None:
-            A = np.vstack((A, np.ones((1, number_of_members))))
+            # no external forces
+            # A = np.vstack((A, np.ones((1, number_of_members))))
+            A = np.vstack((A, ee))
             blo = bup = np.hstack((np.zeros((3 * number_of_nodes,)), 1))
+            if lambda_bar is None:
+                lambda_bar = 1
         else:
+            # external forces
             beq = np.array(force)
             assert np.all(beq.shape == (3, number_of_nodes)), 'force must be a 3 x n matrix'
             blo = bup = beq.flatten(order='F')
+            if lambda_bar is not None:
+                # pretension under external forces
+                A = np.vstack((A, ee))
+                blo = np.hstack((blo, lambda_bar))
+                bup = np.hstack((bup, lambda_bar))
 
         # For equilibrium: Aeq x = beq
 
@@ -1153,17 +1221,17 @@ class Structure:
         # enforce strings have positive force coefficients
         # when there are no external forces set to one to avoid nontrivial solution
         xup = None
+        xlo = None
         if number_of_strings:
-            xlo = np.full((number_of_members, ), 0)
+            xlo = np.full((number_of_members, ), -np.inf)
             xlo[self.member_tags['string']] = 0
-        else:
-            xlo = None
 
         # cost function
-        c = np.ones((number_of_members,))
+        n = number_of_members
+        c = np.ones((n,))
 
         # solve lp
-        cost, gamma, status = optim.lp(number_of_members, m, c, A, blo, bup, xlo, xup)
+        cost, gamma, status = optim.lp(n, m, c, A, blo, bup, xlo, xup)
 
         # if infeasible, throw error
         if status == 'infeasible':
@@ -1200,7 +1268,7 @@ class Structure:
         class :class:`tnsgrt.stiffness.Stiffness`
 
         :param epsilon: numerical accuracy
-        :param storage: if ``sparse`` stores the resulting stiffeness and mass matrices in sparse csr format
+        :param storage: if ``sparse`` stores the resulting stiffness and mass matrices in sparse csr format
         :param apply_rigid_body_constraint: if ``True`` apply 3D rigid body constraints
         :param apply_planar_constraint: if ``True`` apply 2D constraints
         :return: tuple (`S`, `F`, `normal`)
@@ -1306,3 +1374,62 @@ class Structure:
             stiffness.apply_constraint(*NodeConstraint.planar_constraint(self.nodes), local=False)
 
         return stiffness, F, v
+
+
+# module methods
+def rotate(s: Structure, v: npt.NDArray) -> Structure:
+    """
+    Returns a copy of ``s`` in which all nodes are rotated around the 3D vector ``v``
+
+    :param s: the structure to rotate
+    :param v: the 3D rotation vector
+    :return: the rotated structure
+
+    **Notes:**
+
+    1. See :meth:`scipy.spatial.transform.Rotation.from_rotvec` for details
+    """
+    return s.copy().rotate(v)
+
+
+def translate(s: Structure, v: npt.NDArray) -> Structure:
+    """
+    Returns a copy of ``s`` in which all nodes are translated by the 3D vector ``v``
+
+    :param s: the structure to translate
+    :param v: the 3D translation vector
+    :return: the translated structure
+    """
+    return s.copy().translate(v)
+
+
+def reflect(s: Structure, v: npt.NDArray, p: npt.NDArray) -> Structure:
+    """
+    Returns a copy of ``s`` in which all nodes are reflected about a plane normal to the vector `v`,
+    passing through the point `p`.
+
+    If no point is given, it defaults to the origin.
+
+    :param s: the structure to reflect
+    :param v: the 3D normal vector
+    :param p: the 3D origin vector
+    :return: the reflected structure
+    """
+    return s.copy().reflect(v, p)
+
+
+def merge(*s: Structure) -> Structure:
+    """
+    Returns a new structure in which all structures given in `s` are merged
+
+    :param \\*s: the structures to merge
+    :return: the merged structure
+    """
+    if not s:
+        return Structure()
+    else:
+        r = s[0].copy()
+        for si in s[1:]:
+            r.merge(si)
+        return r
+

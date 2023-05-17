@@ -108,13 +108,15 @@ class MatplotlibPlotter(Plotter):
         """
         self.ax.view_init(elev, azim, roll)
 
-    def plot(self, s: Union[Structure, Sequence[Structure]], **kwargs) -> None:
+    def plot(self, *s: Structure, **kwargs) -> None:
 
-        # loop if a sequence is given
-        if not isinstance(s, Structure):
+        # loop if more than one is given
+        if len(s) != 1:
             for si in s:
                 self.plot(si, **kwargs)
             return
+        else:
+            s = s[0]
 
         # process options
         defaults = MatplotlibPlotter.defaults.copy()

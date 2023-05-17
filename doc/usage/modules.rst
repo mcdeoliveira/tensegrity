@@ -16,10 +16,7 @@ tnsgrt.michell
 tnsgrt.structure
 --------------------
 
-.. autoclass:: tnsgrt.structure.Property
-   :members:
-
-.. autoclass:: tnsgrt.structure.Structure
+.. automodule:: tnsgrt.structure
    :members:
 
 tnsgrt.plotter

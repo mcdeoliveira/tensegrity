@@ -52,13 +52,15 @@ class VisPyPlotter(Plotter):
         """
         return self.canvas
 
-    def plot(self, s: Union[Structure, Sequence[Structure]], **kwargs):
+    def plot(self, *s: Structure, **kwargs):
 
-        # loop if a sequence is given
-        if not isinstance(s, Structure):
+        # loop if more than one is given
+        if len(s) != 1:
             for si in s:
                 self.plot(si, **kwargs)
             return
+        else:
+            s = s[0]
 
         # process options
         defaults = VisPyPlotter.defaults.copy()

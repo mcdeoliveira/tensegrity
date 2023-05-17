@@ -25,7 +25,7 @@ def rotation_3d(v: npt.NDArray) -> npt.NDArray:
 
     **Notes:**
 
-    See :meth:`scipy.spatial.transform.Rotation.from_rotvec` for details
+    1. See :meth:`scipy.spatial.transform.Rotation.from_rotvec` for details
     """
     return scipy.spatial.transform.Rotation.from_rotvec(v).as_matrix()
 

@@ -44,7 +44,7 @@ As before, the resulting structure can be plotted using :class:`tnsgrt.plotter.M
 
 to visualize the resulting planar tensegrity structure below:
 
-.. image:: /images/planar.png
+.. image:: /images/planar1.png
   :scale: 50%
 
 Equilibrium
@@ -69,7 +69,7 @@ the structure. The result of calling :meth:`tnsgrt.structure.Structure.equilibri
 is a set of *force coefficients*, which are forces divided by member length.
 
 The result of the equilibrium calculation can be found in the member properties
-`lambda_` (the force coefficient) and `force`:
+``lambda_`` (the force coefficient) and ``force``:
 
 .. code-block:: python
 
@@ -78,7 +78,7 @@ The result of the equilibrium calculation can be found in the member properties
 which, in this example, returns:
 
 .. csv-table::
-   :file: tab1.csv
+   :file: /tables/tab1.csv
    :header-rows: 1
 
 Pretension is set so that the average of the magnitude of the force coefficient on all bars is equal to the parameter
@@ -87,7 +87,7 @@ Pretension is set so that the average of the magnitude of the force coefficient 
 Loaded
 ^^^^^^
 
-In this case an equilibrium is sought in the presence of external forces, given as a `3 x n` array as the following one:
+In this case equilibrium is sought in the presence of external forces, given as a `3 x n` array as the following one:
 
 .. code-block:: python
 
@@ -110,7 +110,7 @@ resulting in the new set of member forces and force coefficients:
 that returns:
 
 .. csv-table::
-   :file: tab2.csv
+   :file: /tables/tab2.csv
    :header-rows: 1
 
 The following code produces a visualization of the applied forces superimposed on the structure:
@@ -156,7 +156,7 @@ member radius, and elasticity modulus:
 The current default values for such properties are:
 
 .. csv-table::
-   :file: tab3.csv
+   :file: /tables/tab3.csv
    :header-rows: 1
 
 For calculating the stiffness matrix of a pretensioned structure, it is also necessary to know the member's force
@@ -171,7 +171,7 @@ during the equilibrium calculation:
 which returns:
 
 .. csv-table::
-   :file: tab4.csv
+   :file: /tables/tab4.csv
    :header-rows: 1
 
 Because the stiffness is a "derived" property, it does not get automatically populated, which can be done by calling
@@ -185,7 +185,7 @@ Because the stiffness is a "derived" property, it does not get automatically pop
 to obtain:
 
 .. csv-table::
-   :file: tab5.csv
+   :file: /tables/tab5.csv
    :header-rows: 1
 
 After setting the material properties, one can calculate the stiffness model associated with the current equilibrium:
@@ -220,20 +220,18 @@ structure, we should expect to encounter various eigenvalues numerically close t
 
     d
 
-returns:
-
-.. code::
+returns::
 
     -6.237207e-09
     -4.329203e-10
-    1.415459e-11
-    9.183017e-10
-    4.478545e-09
-    7.290895e-09
-    4.000000e+00
-    3.141592e+07
-    3.141593e+07
-    3.141593e+07
+     1.415459e-11
+     9.183017e-10
+     4.478545e-09
+     7.290895e-09
+     4.000000e+00
+     3.141592e+07
+     3.141593e+07
+     3.141593e+07
 
 
 Six of these are the so-called "rigid body modes," associated to rigid translations and rotations of the structure.
@@ -253,9 +251,7 @@ recalculate:
     d, v = stiffness.eigs()
     d
 
-to obtain:
-
-.. code::
+to obtain::
 
     4.000000e+00
     3.141592e+07
@@ -275,9 +271,7 @@ suitable for computing displacements. This time:
     x = stiffness.displacements(f)
     x
 
-successfully calculates the resulting approximate displacements:
-
-.. code::
+successfully calculates the resulting approximate displacements::
 
     -2.20468248e-09, -2.20468248e-09,  2.20468248e-09,  2.20468248e-09
      1.77419161e-09, -1.77419161e-09, -5.75306493e-09,  5.75306493e-09
@@ -317,11 +311,9 @@ eigenvector associated with the eigenvalue is:
 
     v[:,0].reshape((3, 4), order='F')
 
-which equals:
+which equals::
 
-.. code::
-
-    +2.27657232e-16,  6.97069602e-17, -6.05872973e-17, -1.78599980e-16
+     2.27657232e-16,  6.97069602e-17, -6.05872973e-17, -1.78599980e-16
     -1.50805456e-16,  4.09366810e-18,  1.79720993e-17,  5.96054627e-17
     -5.00000000e-01,  5.00000000e-01, -5.00000000e-01,  5.00000000e-01
 
@@ -340,9 +332,7 @@ Resulting in a structure in which:
     d, v = stiffness.eigs()
     d
 
-equals:
-
-.. code::
+equals::
 
     3.141592e+07
     3.141593e+07

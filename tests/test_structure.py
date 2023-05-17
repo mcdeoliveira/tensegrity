@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import scipy
 
-from tnsgrt import utils
+from tnsgrt import utils, structure
 from tnsgrt.stiffness import NodeConstraint
 from tnsgrt.structure import Structure
 
@@ -121,14 +121,14 @@ class TestStructure(unittest.TestCase):
         self.assertTrue(s.has_member_tag(2, 'bar'))
         self.assertTrue(s.has_member_tag(2, 'vertical'))
         self.assertFalse(s.has_member_tag(1, 'vertical'))
-        np.testing.assert_array_equal(s.get_members_by_tags(['bar']), [1, 2])
-        np.testing.assert_array_equal(s.get_members_by_tags(['bar', 'vertical']), [2])
+        np.testing.assert_array_equal(s.get_members_by_tag('bar'), [1, 2])
+        np.testing.assert_array_equal(s.get_members_by_tag('bar', 'vertical'), [2])
         self.assertEqual(len(s.member_properties), 3)
         self.assertEqual(s.member_properties.loc[1, 'linewidth'], 2)
         self.assertEqual(s.member_properties.loc[2, 'linewidth'], 1001)
-        self.assertEqual(s.get_member_properties([1, 2], ['volume', 'mass']).to_dict('index'),
+        self.assertEqual(s.get_member_properties([1, 2], 'volume', 'mass').to_dict('index'),
                          {1: {'volume': 0., 'mass': 1.}, 2: {'volume': 2., 'mass': 1.}})
-        self.assertEqual(s.get_member_properties(2, ['volume', 'mass']).to_dict(), {'volume': 2., 'mass': 1.})
+        self.assertEqual(s.get_member_properties(2, 'volume', 'mass').to_dict(), {'volume': 2., 'mass': 1.})
         Structure.member_defaults = member_defaults
 
     def test_get_set_member_properties(self):
@@ -163,39 +163,42 @@ class TestStructure(unittest.TestCase):
         self.assertIsInstance(properties, pd.Series)
         self.assertEqual(len(properties), 3)
 
-        properties = s.get_member_properties([1, 2], ['volume', 'facecolor'])
+        properties = s.get_member_properties([1, 2], 'volume', 'facecolor')
         self.assertIsInstance(properties, pd.DataFrame)
         self.assertEqual(len(properties), 2)
 
-        properties = s.get_member_properties(slice(None), ['volume', 'facecolor'])
+        properties = s.get_member_properties(slice(None), 'volume', 'facecolor')
         self.assertIsInstance(properties, pd.DataFrame)
         self.assertEqual(len(properties), 3)
 
         s.set_member_properties(2, 'volume', 3)
         np.testing.assert_array_equal(s.member_properties['volume'].values, [0, 0, 3])
 
-        s.set_member_properties([1, 2], 'volume', [1, 2])
+        s.set_member_properties([1, 2], 'volume', [1, 2], scalar=False)
         np.testing.assert_array_equal(s.member_properties['volume'].values, [0, 1, 2])
 
         s.set_member_properties([1, 2], 'volume', 3)
         np.testing.assert_array_equal(s.member_properties['volume'].values, [0, 3, 3])
 
-        s.set_member_properties([1, 2], 'volume', 1, wrap=True)
+        s.set_member_properties([1, 2], 'volume', 1)
         np.testing.assert_array_equal(s.member_properties['volume'].values, [0, 1, 1])
 
-        s.set_member_properties(2, 'facecolor', utils.Colors.BROWN.value, wrap=True)
+        s.set_member_properties([1, 2], 'volume', 2, 'mass', 4)
+        np.testing.assert_array_equal(s.member_properties['volume'].values, [0, 2, 2])
+        np.testing.assert_array_equal(s.member_properties['mass'].values, [1, 4, 4])
+
+        s.set_member_properties(2, 'facecolor', utils.Colors.BROWN.value)
         self.assertEqual(s.member_properties['facecolor'].tolist(),
                          [utils.Colors.ORANGE.value, utils.Colors.BLUE.value, utils.Colors.BROWN.value])
 
-        s.set_member_properties([1, 2], 'facecolor', utils.Colors.GREEN.value, wrap=True)
+        s.set_member_properties([1, 2], 'facecolor', utils.Colors.GREEN.value)
         self.assertEqual(s.member_properties['facecolor'].tolist(),
                          [utils.Colors.ORANGE.value, utils.Colors.GREEN.value, utils.Colors.GREEN.value])
 
         s.set_member_properties([1, 2], 'facecolor', [utils.Colors.BLUE.value, utils.Colors.ORANGE.value],
-                                wrap=True, scalar=False)
+                                scalar=False)
         self.assertEqual(s.member_properties['facecolor'].tolist(),
                          [utils.Colors.ORANGE.value, utils.Colors.BLUE.value, utils.Colors.ORANGE.value])
-
 
     def test_add_members_and_add_nodes(self):
 
@@ -267,14 +270,14 @@ class TestStructure(unittest.TestCase):
         self.assertTrue(s.has_member_tag(2, 'bar'))
         self.assertTrue(s.has_member_tag(2, 'vertical'))
         self.assertFalse(s.has_member_tag(1, 'vertical'))
-        np.testing.assert_array_equal(s.get_members_by_tags(['bar']), [1, 2])
-        np.testing.assert_array_equal(s.get_members_by_tags(['bar', 'vertical']), [2])
+        np.testing.assert_array_equal(s.get_members_by_tag('bar'), [1, 2])
+        np.testing.assert_array_equal(s.get_members_by_tag('bar', 'vertical'), [2])
         self.assertEqual(len(s.member_properties), 3)
         self.assertEqual(s.member_properties.loc[1, 'linewidth'], 2)
         self.assertEqual(s.member_properties.loc[2, 'linewidth'], 1001)
-        self.assertEqual(s.get_member_properties([1, 2], ['volume', 'mass']).to_dict('index'),
+        self.assertEqual(s.get_member_properties([1, 2], 'volume', 'mass').to_dict('index'),
                          {1: {'volume': 0., 'mass': 1.}, 2: {'volume': 2., 'mass': 1.}})
-        self.assertEqual(s.get_member_properties(2, ['volume', 'mass']).to_dict(), {'volume': 2., 'mass': 1.})
+        self.assertEqual(s.get_member_properties(2, 'volume', 'mass').to_dict(), {'volume': 2., 'mass': 1.})
 
         copy = s.copy()
 
@@ -299,14 +302,14 @@ class TestStructure(unittest.TestCase):
         self.assertTrue(copy.has_member_tag(2, 'bar'))
         self.assertTrue(copy.has_member_tag(2, 'vertical'))
         self.assertFalse(copy.has_member_tag(1, 'vertical'))
-        np.testing.assert_array_equal(copy.get_members_by_tags(['bar']), [1, 2])
-        np.testing.assert_array_equal(copy.get_members_by_tags(['bar', 'vertical']), [2])
+        np.testing.assert_array_equal(copy.get_members_by_tag('bar'), [1, 2])
+        np.testing.assert_array_equal(copy.get_members_by_tag('bar', 'vertical'), [2])
         self.assertEqual(len(copy.member_properties), 3)
         self.assertEqual(copy.member_properties.loc[1, 'linewidth'], 2)
         self.assertEqual(copy.member_properties.loc[2, 'linewidth'], 1001)
-        self.assertEqual(copy.get_member_properties([1, 2], ['volume', 'mass']).to_dict('index'),
+        self.assertEqual(copy.get_member_properties([1, 2], 'volume', 'mass').to_dict('index'),
                          {1: {'volume': 0., 'mass': 1.}, 2: {'volume': 2., 'mass': 1.}})
-        self.assertEqual(copy.get_member_properties(2, ['volume', 'mass']).to_dict(), {'volume': 2., 'mass': 1.})
+        self.assertEqual(copy.get_member_properties(2, 'volume', 'mass').to_dict(), {'volume': 2., 'mass': 1.})
 
         Structure.member_defaults = member_defaults
 
@@ -329,7 +332,7 @@ class TestStructure(unittest.TestCase):
         members2 = np.array([[0], [1]])
         s2 = Structure(nodes2, members2, number_of_strings=1)
 
-        s1.merge(s2, inplace=True)
+        s1.merge(s2)
 
         self.assertEqual(s1.get_number_of_nodes(), 5)
         self.assertEqual(len(s1.node_properties), 5)
@@ -362,7 +365,7 @@ class TestStructure(unittest.TestCase):
         # members2 = np.array([[0], [1]])
         s2 = Structure(nodes2, members2, number_of_strings=1)
 
-        s2.merge(s1, inplace=True)
+        s2.merge(s1)
         self.assertEqual(s2.get_number_of_nodes(), 5)
         self.assertEqual(len(s2.node_properties), 5)
         self.assertEqual(set(s2.node_tags.keys()), {'bottom', 'top'})
@@ -392,7 +395,7 @@ class TestStructure(unittest.TestCase):
         # members2 = np.array([[0], [1]])
         s2 = Structure(nodes2, members2, number_of_strings=1)
 
-        s = s1.merge(s2)
+        s = structure.merge(s1, s2)
 
         self.assertFalse(s is s1)
         self.assertFalse(s is s2)
@@ -814,11 +817,11 @@ class TestStructure(unittest.TestCase):
             'mags1': np.array([1, 2, 5], dtype=np.int64)
         }
         s = Structure(nodes, members, number_of_strings=2, node_tags=nodes_tags, member_tags=members_tag)
-        s.set_member_properties([0, 3, 5], 'lambda_', np.array([-1, 2, -3]))
+        s.member_properties.loc[[0, 3, 5], 'lambda_'] = [-1, 2, -3]
         np.testing.assert_array_equal(s.get_slack_members(), [1, 2, 4])
-        s.set_member_properties([2], 'lambda_', np.array([1e-9]))
+        s.set_member_properties([2], 'lambda_', 1e-9)
         np.testing.assert_array_equal(s.get_slack_members(), [1, 2, 4])
-        s.set_member_properties([0], 'lambda_', np.array([1e-9]))
+        s.set_member_properties([0], 'lambda_', 1e-9)
         s.remove_members(s.get_slack_members())
         self.assertEqual(s.get_number_of_members(), 2)
 

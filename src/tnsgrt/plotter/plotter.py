@@ -12,11 +12,11 @@ class Plotter:
     Base class for structure plotters
     """
 
-    def plot(self, s: Union[Structure, Sequence[Structure]], **kwargs) -> None:
+    def plot(self, *s: Structure, **kwargs) -> None:
         """
         Plot structure
 
-        :param s: the structure or sequence of structures
+        :param \\*s: the structure or sequence of structures
         :param \\**kwargs: additional keyword arguments
         """
         pass
@@ -71,7 +71,7 @@ class Plotter:
 
             norm = np.linalg.norm(rotation_vector)
             if norm < 1e-6:
-                rotation_vector = [1, 0, 0]
+                rotation_vector = np.array([1, 0, 0])
             else:
                 rotation_vector /= norm
 
