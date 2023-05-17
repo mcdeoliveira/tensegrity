@@ -69,12 +69,16 @@ def orthogonalize(a: npt.NDArray, epsilon: float = 1e-8,
            Assuming that :math:`A` is full rank, partition
 
            .. math::
-               \\begin{bmatrix} V & T \\end{bmatrix} = Q = \\begin{bmatrix} Q_1 & Q_2 \\end{bmatrix}, \\qquad R = \\begin{bmatrix} R_1 \\\\ 0 \\end{bmatrix}, \\quad R_1 \\text{ is upper triangular}
+               \\begin{bmatrix} V & T \\end{bmatrix} = Q =
+               \\begin{bmatrix} Q_1 & Q_2 \\end{bmatrix}, \\qquad R =
+               \\begin{bmatrix} R_1 \\\\ 0 \\end{bmatrix}, \\quad
+               R_1 \\text{ is upper triangular}
 
            to obtain the equivalent orthogonal constraint and its solution
 
            .. math::
-               A^T x = R_1^T V^T x = 0 \\quad \\Leftrightarrow \\quad V^T x = 0, \\qquad x = T y
+               A^T x = R_1^T V^T x = 0 \\quad \\Leftrightarrow \\quad V^T x = 0,
+               \\qquad x = T y
 
            The matrix :math:`T` is an orthogonal basis for the constraint null space
 

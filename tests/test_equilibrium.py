@@ -1,11 +1,6 @@
 import unittest
 
 import numpy as np
-import pandas as pd
-import scipy
-
-from tnsgrt import utils, structure
-from tnsgrt.stiffness import NodeConstraint
 from tnsgrt.structure import Structure
 
 

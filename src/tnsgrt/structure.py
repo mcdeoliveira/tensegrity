@@ -320,14 +320,14 @@ class Structure:
             return reduce(lambda a1, a2: np.intersect1d(a1, a2, assume_unique=True),
                           [v for k, v in self.node_tags.items() if k in tag])
 
-    def get_number_of_members_by_tag(self, tag: str) -> int:
+    def get_number_of_nodes_by_tag(self, tag: str) -> int:
         """
         Return the number of members with tag ``tag``
 
         :param tag: the tags
         :return: the number of members
         """
-        return len(self.member_tags.get(tag, []))
+        return len(self.node_tags.get(tag, []))
 
     def get_members_per_node(self) -> npt.NDArray:
         """
@@ -865,7 +865,8 @@ class Structure:
         **Notes:**
 
         1. This method is for convenience when assigning objects to dataframes.
-           See `this question <https://stackoverflow.com/questions/48000225/must-have-equal-len-keys-and-value-when-setting-with-an-iterable>`_
+           See `this question <https://stackoverflow.com/questions/48000225/\
+must-have-equal-len-keys-and-value-when-setting-with-an-iterable>`_
            for details.
         """
         if isinstance(index, int):
@@ -913,10 +914,13 @@ class Structure:
 
         **WARNING:** :meth:`tnsgrt.structure.Structure.get_member_properties` uses
         pandas' `loc` method that includes the last element of slices; See
-        `pandas documentation <https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.loc.html>`_
+        `pandas documentation <https://pandas.pydata.org/docs/reference/api/\
+pandas.DataFrame.loc.html>`_
         for details
         """
-        return self.member_properties.loc[index, labels[0] if len(labels) == 1 else list(labels)]
+        return \
+            self.member_properties.loc[index,
+                                       labels[0] if len(labels) == 1 else list(labels)]
 
     def set_node_properties(self, index: Union[int, Sequence[int], slice],
                             labels: Union[str, Sequence[str]], values: Any, *vargs,
@@ -936,7 +940,8 @@ class Structure:
         for lv in more_itertools.batched(vargs, 2):
             Structure._set_dataframe(self.node_properties, index, *lv, scalar=scalar)
 
-    def get_node_properties(self, index: Union[int, Sequence[int], slice], *labels: str)\
+    def get_node_properties(self,
+                            index: Union[int, Sequence[int], slice], *labels: str)\
             -> pd.DataFrame:
         """
         Retrieve node properties
