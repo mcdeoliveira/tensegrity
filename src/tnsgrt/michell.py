@@ -29,7 +29,8 @@ class Michell(Structure):
 
     **Notes:**
 
-    1. If :math:`\\rho` is equal to ``radius``, then the radii as a function of the layer number `i` is
+    1. If :math:`\\rho` is equal to ``radius``, then the radii as a function of the
+       layer number `i` is
 
       .. math::
            r(i) = \\rho \\, a^i, \\qquad a = \\frac{\\beta}{\\sin(\\beta + \\pi)}
@@ -39,11 +40,14 @@ class Michell(Structure):
        .. math::
           \\beta < \\frac{\\pi}{2} - \\frac{\\pi}{2 n}
 
-       The default :math:`\\beta = \\pi/4` leads to convergent designs for all :math:`n > 2`.
+       The default :math:`\\beta = \\pi/4` leads to convergent designs for all
+       :math:`n > 2`.
     3. Additional keyword arguments are passed to :class:`tnsgrt.structure.Structure`
     """
 
-    def __init__(self, n: int = 6, beta: float = np.pi/4, q: int = 4, radius: float = 1, **kwargs):
+    def __init__(self,
+                 n: int = 6, beta: float = np.pi/4, q: int = 4, radius: float = 1,
+                 **kwargs):
         # other options
         options = {
             'spiral': True,
@@ -55,7 +59,8 @@ class Michell(Structure):
         options.update(kwargs)
 
         # remove used options
-        kwargs = {k: v for k, v in kwargs.items() if k not in ['spiral', 'radial', 'outer', 'inner', 'center']}
+        kwargs = {k: v for k, v in kwargs.items()
+                  if k not in ['spiral', 'radial', 'outer', 'inner', 'center']}
 
         # wedge angle
         phi = np.pi / n
@@ -84,11 +89,14 @@ class Michell(Structure):
             michell_members = np.zeros((2*n, 2*(q-1)))
             for i in range(n):
                 for j in range(q-1):
-                    michell_members[2*i:2*(i+1), j] = [node_index(i, j), node_index(np.mod(i+1, n), np.mod(j+1, q))]
-                    michell_members[2*i:2*(i+1), q-1+j] = [node_index(i, j), node_index(i, np.mod(j+1, q))]
+                    michell_members[2*i:2*(i+1), j] = \
+                        [node_index(i, j), node_index(np.mod(i+1, n), np.mod(j+1, q))]
+                    michell_members[2*i:2*(i+1), q-1+j] = \
+                        [node_index(i, j), node_index(i, np.mod(j+1, q))]
 
             # reshape members
-            members = np.hstack((members, michell_members.reshape((2, n*2*(q-1)), order='F')))
+            members = np.hstack((members,
+                                 michell_members.reshape((2, n*2*(q-1)), order='F')))
 
         # add radial
         if options['radial'] and q > 2:
@@ -96,7 +104,8 @@ class Michell(Structure):
             radial_members = np.zeros((2*n, m))
             for i in range(n):
                 for j in range(m):
-                    radial_members[2*i:2*(i+1), j] = [node_index(i, j), node_index(np.mod(i+1, n), np.mod(j+2, q))]
+                    radial_members[2*i:2*(i+1), j] = \
+                        [node_index(i, j), node_index(np.mod(i+1, n), np.mod(j+2, q))]
 
             # reshape members
             members = np.hstack((members, radial_members.reshape((2, n*m), order='F')))
@@ -105,7 +114,8 @@ class Michell(Structure):
         if options['outer']:
             outer_members = np.zeros((2*n, 1))
             for i in range(n):
-                outer_members[2*i:2*(i+1), 0] = [node_index(i, 0), node_index(np.mod(i+1, n), 0)]
+                outer_members[2*i:2*(i+1), 0] = \
+                    [node_index(i, 0), node_index(np.mod(i+1, n), 0)]
 
             # reshape members
             members = np.hstack((members, outer_members.reshape((2, n), order='F')))
@@ -114,7 +124,8 @@ class Michell(Structure):
         if options['inner']:
             inner_members = np.zeros((2*n, 1))
             for i in range(n):
-                inner_members[2*i:2*(i+1), 0] = [node_index(i, q-1), node_index(np.mod(i+1, n), q-1)]
+                inner_members[2*i:2*(i+1), 0] = \
+                    [node_index(i, q-1), node_index(np.mod(i+1, n), q-1)]
 
             # reshape members
             members = np.hstack((members, inner_members.reshape((2, n), order='F')))

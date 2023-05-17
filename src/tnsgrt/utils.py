@@ -30,7 +30,8 @@ def rotation_3d(v: npt.NDArray) -> npt.NDArray:
     return scipy.spatial.transform.Rotation.from_rotvec(v).as_matrix()
 
 
-def orthogonalize(a: npt.NDArray, epsilon: float = 1e-8, mode: Literal['reduced', 'complete'] = 'reduced')\
+def orthogonalize(a: npt.NDArray, epsilon: float = 1e-8,
+                  mode: Literal['reduced', 'complete'] = 'reduced')\
         -> Union[Tuple[int, npt.NDArray, npt.NDArray],Tuple[int, npt.NDArray]]:
     """
     Ortoghonalize the constraint
@@ -41,12 +42,13 @@ def orthogonalize(a: npt.NDArray, epsilon: float = 1e-8, mode: Literal['reduced'
     :param a: the coefficient array :math:`A`
     :param epsilon: the accuracy with which to evaluate the rank
     :param mode: 'complete' or 'reduced'
-    :return: tuple with rank, the orthogonalized coefficient array, and its null space if mode is 'complete'
+    :return: tuple with rank, the orthogonalized coefficient array, and its null space
+             if mode is 'complete'
 
     **Notes:**
 
-        1. If ``mode = 'reduced'`` the constraint coefficient is normalized at the constructor by calculating
-           the *reduced* QR decomposition
+        1. If ``mode = 'reduced'`` the constraint coefficient is normalized at the
+           constructor by calculating the *reduced* QR decomposition
 
            .. math::
                A = Q R, \\quad Q^T Q = I, \\quad R \\text{ is upper triangular}
@@ -58,8 +60,8 @@ def orthogonalize(a: npt.NDArray, epsilon: float = 1e-8, mode: Literal['reduced'
 
            is obtained in which the coefficient is the orthogonal matrix :math:`V = Q`
 
-        2. If ``mode = 'complete'`` the constraint coefficient is normalized at the constructor by calculating
-           the *complete* QR decomposition
+        2. If ``mode = 'complete'`` the constraint coefficient is normalized at the
+           constructor by calculating the *complete* QR decomposition
 
            .. math::
                A = Q R, \\quad Q^T Q = Q Q^T = I, \\quad R \\text{ is upper triangular}
@@ -76,8 +78,8 @@ def orthogonalize(a: npt.NDArray, epsilon: float = 1e-8, mode: Literal['reduced'
 
            The matrix :math:`T` is an orthogonal basis for the constraint null space
 
-        3. The above factorizations are modified to take into account the numerical rank of :math:`A` when it
-           is rank-deficient
+        3. The above factorizations are modified to take into account the numerical
+           rank of :math:`A` when it is rank-deficient
     """
     assert a.shape[1] < a.shape[0], 'a must be tall'
     # QR decomposition
@@ -103,7 +105,8 @@ def is_colinear(a: npt.NDArray, b: npt.NDArray, epsilon: float = 1e-8) -> bool:
     :param epsilon: accuracy
     :return: ``True`` if colinear
     """
-    return np.linalg.norm(a - (np.dot(a, b) / np.dot(b, b)) * b) < epsilon * np.linalg.norm(a)
+    return np.linalg.norm(a - (np.dot(a, b) / np.dot(b, b)) * b) \
+        < epsilon * np.linalg.norm(a)
 
 
 def norm(a: Union[npt.NDArray, scipy.sparse.csr_matrix]) -> float:

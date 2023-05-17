@@ -44,7 +44,8 @@ class Plotter:
                  volume: float = 0., radius: float = 0.01, n: int = 12) \
             -> Tuple[npt.NDArray, npt.NDArray, npt.NDArray]:
         """
-        Return xyz grid points for cylinder with center aligned with the vector defined by ``node1`` and ``node2``
+        Return xyz grid points for cylinder with center aligned with the vector defined
+        by ``node1`` and ``node2``
 
         :param node1: center of the base of the cylinder
         :param node2: center of the top of the cylinder

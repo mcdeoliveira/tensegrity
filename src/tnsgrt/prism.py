@@ -39,15 +39,15 @@ class Prism(Structure):
           \\frac{\\pi}{2} - \\frac{\\pi}{p} \\leq \\alpha \\leq \\frac{\\pi}{2}
 
        when both *vertical* and *diagonal* strings are present
-    2. If *diagonal* strings are not present, then unloaded equilibrium is possible only
-       if
+    2. If *diagonal* strings are not present, then unloaded equilibrium is possible
+       only if
 
        .. math::
           \\alpha = \\frac{\\pi}{2} - \\frac{\\pi}{p}
 
        This is the default prism configuration
-    3. If *vertical* strings are not present, then unloaded equilibrium is possible only
-       if
+    3. If *vertical* strings are not present, then unloaded equilibrium is possible
+       only if
 
        .. math::
           \\alpha = \\frac{\\pi}{2}
@@ -55,8 +55,10 @@ class Prism(Structure):
     """
 
     def __init__(self, p: int = 3,
-                 top_radius: float = 1, bottom_radius: float = 1, height: float = 1, alpha: Optional[float] = None,
-                 calculate_equilibrium=True, equilibrium_method=Literal['analytic', 'numeric'],
+                 top_radius: float = 1, bottom_radius: float = 1,
+                 height: float = 1, alpha: Optional[float] = None,
+                 calculate_equilibrium=True,
+                 equilibrium_method=Literal['analytic', 'numeric'],
                  **kwargs):
 
         # proper size
@@ -77,19 +79,24 @@ class Prism(Structure):
         options.update(kwargs)
 
         # clean up kwargs
-        kwargs = {k: v for k, v in kwargs.items() if k not in ['bottom', 'top', 'vertical', 'diagonal', 'bar']}
+        kwargs = {k: v for k, v in kwargs.items()
+                  if k not in ['bottom', 'top', 'vertical', 'diagonal', 'bar']}
 
         # valid equilibrium?
         if calculate_equilibrium:
-            assert 'bottom' in options, 'equilibrium is not possible without bottom strings'
+            assert 'bottom' in options, \
+                'equilibrium is not possible without bottom strings'
             assert 'top' in options, 'equilibrium is not possible without top strings'
             assert 'bar' in options, 'equilibrium is not possible without bars'
             if not options['diagonal']:
-                assert np.abs(np.pi/2 - np.pi/p - alpha) < 1e-8, 'equilibrium is not possible with given twist angle'
+                assert np.abs(np.pi/2 - np.pi/p - alpha) < 1e-8, \
+                    'equilibrium is not possible with given twist angle'
             if not options['vertical']:
-                assert np.abs(np.pi/2 - alpha) < 1e-8, 'equilibrium is not possible with given twist angle'
+                assert np.abs(np.pi/2 - alpha) < 1e-8, \
+                    'equilibrium is not possible with given twist angle'
             if options['vertical'] and options['diagonal']:
-                assert np.pi/2 - np.pi/p <= alpha <= np.pi/2, 'equilibrium is not possible with given twist angle'
+                assert np.pi/2 - np.pi/p <= alpha <= np.pi/2,\
+                    'equilibrium is not possible with given twist angle'
 
         # base angle
         beta = 2 * np.pi/p
@@ -147,7 +154,8 @@ class Prism(Structure):
             members = np.hstack((members, bars))
 
         # call super
-        super().__init__(nodes=nodes, members=members, number_of_strings=number_of_strings,
+        super().__init__(nodes=nodes, members=members,
+                         number_of_strings=number_of_strings,
                          member_tags=string_tags, **kwargs)
 
         if calculate_equilibrium:
@@ -156,19 +164,26 @@ class Prism(Structure):
                 rho = top_radius / bottom_radius
                 # force coefficients
                 lambda_ = np.array([
-                    rho * np.cos(np.pi / p) / np.cos(alpha - np.pi / p),                # bottom
-                    (1 / rho) * np.cos(np.pi / p) / np.cos(alpha - np.pi / p),          # top
-                    2 * np.cos(alpha) * np.cos(np.pi / p) / np.cos(alpha - np.pi / p),  # vertical
-                    -np.cos(alpha + np.pi / p) / np.cos(alpha - np.pi / p),             # diagonal
-                    -1                                                                  # bars
+                    # bottom
+                    rho * np.cos(np.pi / p) / np.cos(alpha - np.pi / p),
+                    # top
+                    (1 / rho) * np.cos(np.pi / p) / np.cos(alpha - np.pi / p),
+                    # vertical
+                    2 * np.cos(alpha) * np.cos(np.pi / p) / np.cos(alpha - np.pi / p),
+                    # diagonal
+                    -np.cos(alpha + np.pi / p) / np.cos(alpha - np.pi / p),
+                    # bars
+                    -1
                 ]).reshape((1, 5))
                 # select appropriate string sets
                 index = [True, True, options['vertical'], options['diagonal'], True]
                 # construct coefficients
-                self.member_properties['lambda_'] = (np.ones((p, 1)) @ lambda_[:, index]).flatten(order='F')
+                self.member_properties['lambda_'] = \
+                    (np.ones((p, 1)) @ lambda_[:, index]).flatten(order='F')
             else:
                 # solve for equilibrium
-                self.equilibrium(equalities=[np.arange(number_of_strings, members.shape[1])])
+                self.equilibrium(equalities=[np.arange(number_of_strings,
+                                                       members.shape[1])])
 
             # update mass, volume, stiffness and rest length
             self.update_member_properties()

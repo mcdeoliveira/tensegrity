@@ -16,7 +16,8 @@ class NodeConstraint:
 
     **Notes:**
 
-    1. If :math:`x` is the node coordinate and :math:`A` is the constraint coefficient then
+    1. If :math:`x` is the node coordinate and :math:`A` is the constraint coefficient
+       then
 
        .. math::
            A x = 0
@@ -35,10 +36,11 @@ class NodeConstraint:
             self.basis = None
             self.normal = np.eye(3)
         else:
-            assert constraint.ndim == 2 and constraint.shape[1] == 3 and constraint.shape[0] < 3, \
-                'normal must be a m x 3, m < 3, array'
+            assert constraint.ndim == 2 and constraint.shape[1] == 3 and \
+                   constraint.shape[0] < 3, 'normal must be a m x 3, m < 3, array'
             # first orthogonalize
-            rank, r, t = orthogonalize(constraint.transpose(), mode='complete', epsilon=epsilon)
+            rank, r, t = orthogonalize(constraint.transpose(),
+                                       mode='complete', epsilon=epsilon)
             self.dof = 3 - rank
             if self.dof == 0:
                 self.basis = None
@@ -50,11 +52,13 @@ class NodeConstraint:
     @staticmethod
     def node_constraint(nodes: npt.NDArray, constraints: Sequence['NodeConstraint'],
                         storage: Literal['sparse', 'dense'] = 'sparse') \
-            -> Union[Tuple[npt.NDArray, npt.NDArray], Tuple[scipy.sparse.csr_array, scipy.sparse.csr_array]]:
+            -> Union[Tuple[npt.NDArray, npt.NDArray],
+                     Tuple[scipy.sparse.csr_array, scipy.sparse.csr_array]]:
         """
         Construct the constraint associated with the given nodes and node constraints
 
-        The resulting tuple is compatible with :meth:`~tnsgrt.stiffness.Stiffness.apply_constraint`
+        The resulting tuple is compatible with
+        :meth:`~tnsgrt.stiffness.Stiffness.apply_constraint`
 
         :param nodes: 3 x n array of nodes
         :param constraints: list with n constraints
@@ -80,22 +84,28 @@ class NodeConstraint:
                 if c is None:
                     # add identity to basis
                     dofj = 3
-                    row_col_t[0, 3*kk:3*kk+3*dofj] = np.kron(np.arange(3*i, 3*(i+1)), np.ones((3,)))
-                    row_col_t[1, 3*kk:3*kk+3*dofj] = np.kron(np.arange(kk, kk+dofj), np.ones((3,)))
+                    row_col_t[0, 3*kk:3*kk+3*dofj] = \
+                        np.kron(np.arange(3*i, 3*(i+1)), np.ones((3,)))
+                    row_col_t[1, 3*kk:3*kk+3*dofj] = \
+                        np.kron(np.arange(kk, kk+dofj), np.ones((3,)))
                     data_t[3*kk:3*kk+3*dofj] = np.eye(dofj).flatten(order='C')
                     kk += dofj
                 else:
                     # add to normal
                     nocj = 3-c.dof
-                    row_col_r[0, 3*jj:3*jj+3*nocj] = np.kron(np.arange(jj, jj+nocj), np.ones((3,)))      # row
-                    row_col_r[1, 3*jj:3*jj+3*nocj] = np.kron(np.ones((nocj,)), np.arange(3*i, 3*(i+1)))  # col
+                    row_col_r[0, 3*jj:3*jj+3*nocj] = \
+                        np.kron(np.arange(jj, jj+nocj), np.ones((3,)))      # row
+                    row_col_r[1, 3*jj:3*jj+3*nocj] = \
+                        np.kron(np.ones((nocj,)), np.arange(3*i, 3*(i+1)))  # col
                     data_r[3*jj:3*jj+3*nocj] = c.normal.flatten(order='C')
                     jj += nocj
                     if c.dof:
                         # add to basis
                         dofj = c.dof
-                        row_col_t[0, 3*kk:3*kk+3*dofj] = np.kron(np.arange(3*i, 3*(i+1)), np.ones((dofj,)))  # row
-                        row_col_t[1, 3*kk:3*kk+3*dofj] = np.kron(np.ones((3,)), np.arange(kk, kk+dofj))      # col
+                        row_col_t[0, 3*kk:3*kk+3*dofj] = \
+                            np.kron(np.arange(3*i, 3*(i+1)), np.ones((dofj,)))  # row
+                        row_col_t[1, 3*kk:3*kk+3*dofj] = \
+                            np.kron(np.ones((3,)), np.arange(kk, kk+dofj))      # col
                         data_t[3*kk:3*kk+3*dofj] = c.basis.flatten(order='C')
                         kk += dofj
             R = scipy.sparse.coo_matrix((data_r, row_col_r),
@@ -157,21 +167,25 @@ class NodeConstraint:
         # - node 0 to be fixed,
         # - node 1 to be in line from 0 to 1,
         # - node 2 to be in the plane
-        return NodeConstraint(), NodeConstraint(np.vstack((v012p, v10p))), NodeConstraint(v012p.reshape((1, 3)))
+        return NodeConstraint(), NodeConstraint(np.vstack((v012p, v10p))), \
+            NodeConstraint(v012p.reshape((1, 3)))
 
     @staticmethod
-    def rigid_body_constraint(nodes: npt.NDArray, epsilon: float = 1e-8) -> Tuple[npt.NDArray, npt.NDArray]:
+    def rigid_body_constraint(nodes: npt.NDArray, epsilon: float = 1e-8) -> \
+            Tuple[npt.NDArray, npt.NDArray]:
         """
         Construct rigid-body constraint associated with the given nodes
 
-        The resulting tuple is compatible with :meth:`~tnsgrt.stiffness.Stiffness.apply_constraint`
+        The resulting tuple is compatible with
+        :meth:`~tnsgrt.stiffness.Stiffness.apply_constraint`
 
         :param nodes: 3 x n array of nodes
         :param epsilon: precision used to assess numerical rank
         :return: tuple with the constraint matrix, and its null space
         """
 
-        assert len(nodes.shape) == 2 and nodes.shape[0] == 3, 'nodes must be a 3 x m matrix'
+        assert len(nodes.shape) == 2 and nodes.shape[0] == 3, \
+            'nodes must be a 3 x m matrix'
 
         number_of_nodes = nodes.shape[1]
 
@@ -191,18 +205,23 @@ class NodeConstraint:
         r3 = (np.array([[0, -1, 0], [1, 0, 0], [0, 0, 0]]) @ nodes).ravel(order='F')
 
         r = np.vstack((t1.ravel(order='F'), t2.ravel(order='F'), t3.ravel(order='F'),
-                       r1 / np.linalg.norm(r1), r2 / np.linalg.norm(r2), r3 / np.linalg.norm(r3)))
+                       r1 / np.linalg.norm(r1),
+                       r2 / np.linalg.norm(r2),
+                       r3 / np.linalg.norm(r3)))
 
         rank, r, t = orthogonalize(r.transpose(), epsilon=epsilon, mode='complete')
 
         return r.transpose(), t
 
     @staticmethod
-    def planar_constraint(nodes: npt.NDArray, normal: Optional[npt.NDArray] = None, epsilon: float = 1e-8, storage='sparse'):
+    def planar_constraint(nodes: npt.NDArray, normal: Optional[npt.NDArray] = None,
+                          epsilon: float = 1e-8, storage='sparse'):
         """
-        Construct the planar constraint associated with the given nodes and normal vector
+        Construct the planar constraint associated with the given nodes and normal
+        vector
 
-        The resulting tuple is compatible with :meth:`~tnsgrt.stiffness.Stiffness.apply_constraint`
+        The resulting tuple is compatible with
+        :meth:`~tnsgrt.stiffness.Stiffness.apply_constraint`
 
         :param nodes: 3 x n array of nodes
         :param normal: list with n constraints
@@ -216,7 +235,8 @@ class NodeConstraint:
             normal = normal.reshape((3, 1))
         elif normal.ndim == 2 and normal.shape[0] == 1 and normal.shape[1] == 3:
             normal = normal.transpose()
-        assert normal.ndim == 2 and normal.shape[0] == 3 and normal.shape[1] == 1, 'normal must be a 3D vector'
+        assert normal.ndim == 2 and normal.shape[0] == 3 and normal.shape[1] == 1, \
+            'normal must be a 3D vector'
 
         # calculate normal and basis
         _, normal, basis = orthogonalize(normal, mode='complete', epsilon=epsilon)
@@ -238,13 +258,17 @@ class NodeConstraint:
             nocj, dofj = 1, 2
             for i in range(n):
                 # add to constraint
-                row_col_r[0, 3*jj:3*jj+3*nocj] = np.kron(np.arange(jj, jj+nocj), np.ones((3,)))      # row
-                row_col_r[1, 3*jj:3*jj+3*nocj] = np.kron(np.ones((nocj,)), np.arange(3*i, 3*(i+1)))  # col
+                row_col_r[0, 3*jj:3*jj+3*nocj] = \
+                    np.kron(np.arange(jj, jj+nocj), np.ones((3,)))      # row
+                row_col_r[1, 3*jj:3*jj+3*nocj] = \
+                    np.kron(np.ones((nocj,)), np.arange(3*i, 3*(i+1)))  # col
                 data_r[3*jj:3*jj+3*nocj] = normal
                 jj += nocj
                 # add to basis
-                row_col_t[0, 3*kk:3*kk+3*dofj] = np.kron(np.arange(3*i, 3*(i+1)), np.ones((dofj,)))  # row
-                row_col_t[1, 3*kk:3*kk+3*dofj] = np.kron(np.ones((3,)), np.arange(kk, kk+dofj))      # col
+                row_col_t[0, 3*kk:3*kk+3*dofj] = \
+                    np.kron(np.arange(3*i, 3*(i+1)), np.ones((dofj,)))  # row
+                row_col_t[1, 3*kk:3*kk+3*dofj] = \
+                    np.kron(np.ones((3,)), np.arange(kk, kk+dofj))      # col
                 data_t[3*kk:3*kk+3*dofj] = basis
                 kk += dofj
             R = scipy.sparse.coo_matrix((data_r, row_col_r),
@@ -301,7 +325,8 @@ class Stiffness:
        .. math::
            K_x = T^T K T, \\qquad M_x = T^T M T
 
-    3. Use :meth:`tnsgrt.stiffness.Stiffness.apply_constraint` to apply constraints to the model
+    3. Use :meth:`tnsgrt.stiffness.Stiffness.apply_constraint` to apply constraints
+       to the model
 
     4. Node constraints are enforced to be orthogonal so that
 
@@ -321,7 +346,8 @@ class Stiffness:
         assert K.ndim == 2 and K.shape[0] == K.shape[1], 'K must be a square matrix'
 
         if M is not None:
-            assert M.ndim == 2 and M.shape[0] == M.shape[1] and M.shape[0] == K.shape[0], \
+            assert M.ndim == 2 and M.shape[0] == M.shape[1] \
+                   and M.shape[0] == K.shape[0], \
                 'M must be a square matrix of same size as K'
 
     def apply_constraint(self,
@@ -386,13 +412,16 @@ class Stiffness:
             # local constraint
             if T is None:
                 # normalize before applying
-                rank, r, t = orthogonalize(R.transpose(), mode='complete', epsilon=epsilon)
+                rank, r, t = orthogonalize(R.transpose(),
+                                           mode='complete', epsilon=epsilon)
                 r = r.transpose()
             else:
                 # test orthogonality
                 assert norm(R @ T) < epsilon, 'R and T must be orthogonal'
-                assert norm(R @ R.transpose() - scipy.sparse.eye(R.shape[0])) < epsilon, 'R must be unitary'
-                assert norm(T.transpose() @ T - scipy.sparse.eye(T.shape[1])) < epsilon, 'T must be unitary'
+                assert norm(R @ R.transpose() - scipy.sparse.eye(R.shape[0])) \
+                       < epsilon, 'R must be unitary'
+                assert norm(T.transpose() @ T - scipy.sparse.eye(T.shape[1])) \
+                       < epsilon, 'T must be unitary'
                 r, t = R, T
 
             # apply constraint
@@ -433,7 +462,8 @@ class Stiffness:
         else:
             # not local and self.T is not None
             if T is not None:
-                warnings.warn("allowed displacements parameter 'T' ignored when 'local=False'")
+                warnings.warn("allowed displacements parameter 'T' ignored when "
+                              "'local=False'")
             self.apply_constraint(R @ self.T, epsilon=epsilon)
 
     def displacements(self, f: npt.NDArray):
@@ -452,24 +482,29 @@ class Stiffness:
         """
         m = self.K.shape[0] if self.T is None else self.T.shape[0]
         assert f.shape[0] == 3 and f.shape[1] == m/3, 'f must be a 3 x m array'
-        x = self.T @ np.linalg.solve(self.K, self.T.transpose() @ f.flatten(order='F')) \
+        x = self.T @ np.linalg.solve(self.K,
+                                     self.T.transpose() @ f.flatten(order='F')) \
             if self.T is not None else \
             np.linalg.solve(self.K, f.flatten(order='F'))
         return x.reshape((3, int(m/3)), order='F')
 
-    def eigs(self, k: int = 12, which: Literal['LM', 'SM', 'LR', 'SR', 'LI', 'SI'] = 'SM'):
+    def eigs(self, k: int = 12,
+             which: Literal['LM', 'SM', 'LR', 'SR', 'LI', 'SI'] = 'SM'):
         """
         Compute the eigenvalues and eigenvectors of the stiffness matrix
 
-        If the stiffness matrix is stored as a sparse array, return only the first k eigenvalue/eigenvector pairs
+        If the stiffness matrix is stored as a sparse array, return only the first k
+        eigenvalue/eigenvector pairs
 
         :param k: the number of eigenvalues
-        :param which: which eigenvalues to compute; see :func:`scipy.sparse.linalg.eigsh` for details
+        :param which: which eigenvalues to compute; see
+                      :func:`scipy.sparse.linalg.eigsh` for details
         :return: tuple with eigenvalues, and eigenvectors
 
         **Notes:**
 
-        1. The eigenvalues and eigenvectors are calculated by solving the eigenvalue problem
+        1. The eigenvalues and eigenvectors are calculated by solving the eigenvalue
+           problem
 
            .. math::
                K y = \\lambda \\, y, \\qquad x = T \\, y
@@ -497,13 +532,15 @@ class Stiffness:
         Compute the natural frequencies [rad/s] and mode vectors
 
         :param k: the number of eigenvalues
-        :param which: which eigenvalues to compute; see :func:`scipy.sparse.linalg.eigsh` for details
+        :param which: which eigenvalues to compute; see
+                      :func:`scipy.sparse.linalg.eigsh` for details
         :param units: return frequencies in Hz if ``units = 'Hz'``
         :return: tuple with eigenvalues, and eigenvectors
 
         **Notes:**
 
-        1. The natural frequencies and mode vectors are calculated by solving the generalized eigenvalue problem
+        1. The natural frequencies and mode vectors are calculated by solving the
+           generalized eigenvalue problem
 
            .. math::
                K y = \\omega^2 M y, \\qquad x = T \\, y

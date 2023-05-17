@@ -29,7 +29,8 @@ class MatplotlibPlotter(Plotter):
     }
 
     @staticmethod
-    def plot_line(ax: plt.Axes, nodes: npt.NDArray[np.float_], i: int, j: int, **kwargs) -> None:
+    def plot_line(ax: plt.Axes, nodes: npt.NDArray[np.float_],
+                  i: int, j: int, **kwargs) -> None:
         """
         Plot line connecting ``nodes[i]`` to ``nodes[j]``
 
@@ -37,7 +38,8 @@ class MatplotlibPlotter(Plotter):
         :param nodes: 3 x m array of nodes
         :param i: the index of the beginning of the line
         :param j: the index of the end of the line
-        :param \**kwargs: additional keywords arguments passed to ``matplotlib.axis.plot``
+        :param \**kwargs: additional keywords arguments passed to
+                          ``matplotlib.axis.plot``
         """
         # draw lines
         x = np.hstack((nodes[0, i], nodes[0, j]))
@@ -46,9 +48,9 @@ class MatplotlibPlotter(Plotter):
         ax.plot(x, y, z, **kwargs)
 
     @staticmethod
-    def plot_solid_cylinder(ax: plt.Axes, nodes: npt.NDArray[np.float_], i: int, j: int,
-                            volume: float = 0., radius: float = 0.01, n: int = 12,
-                            **kwargs) -> None:
+    def plot_solid_cylinder(ax: plt.Axes, nodes: npt.NDArray[np.float_],
+                            i: int, j: int, volume: float = 0., radius: float = 0.01,
+                            n: int = 12, **kwargs) -> None:
         """
         Plot solid cylinder connecting ``nodes[i]`` to ``nodes[j]``
 
@@ -59,7 +61,8 @@ class MatplotlibPlotter(Plotter):
         :param volume: the cylinder volume
         :param radius: the cylinder radius
         :param n: the number of sides of the cylinder
-        :param \**kwargs: additional keywords arguments passed to ``matplotlib.axis.plot``
+        :param \**kwargs: additional keywords arguments passed to
+                          ``matplotlib.axis.plot``
         """
 
         # cylinder nodes
@@ -140,11 +143,16 @@ class MatplotlibPlotter(Plotter):
                 if s.member_properties.loc[j, 'visible']:
                     if s.has_member_tag(j, 'string'):
                         # plot strings as lines
-                        kwargs = s.get_member_properties(j, ['facecolor', 'linewidth']).to_dict()
+                        kwargs = s.get_member_properties(j, 'facecolor',
+                                                         'linewidth').to_dict()
                         kwargs['color'] = kwargs['facecolor']
                         del kwargs['facecolor']
-                        MatplotlibPlotter.plot_line(self.ax, nodes, members[0, j], members[1, j], **kwargs)
+                        MatplotlibPlotter.plot_line(self.ax, nodes, members[0, j],
+                                                    members[1, j], **kwargs)
                     else:
                         # plot others as solid elements
-                        kwargs = s.get_member_properties(j, ['facecolor', 'edgecolor', 'volume', 'radius']).to_dict()
-                        MatplotlibPlotter.plot_solid_cylinder(self.ax, nodes, members[0, j], members[1, j], **kwargs)
+                        kwargs = s.get_member_properties(j, 'facecolor', 'edgecolor',
+                                                         'volume', 'radius').to_dict()
+                        MatplotlibPlotter.plot_solid_cylinder(self.ax, nodes,
+                                                              members[0, j],
+                                                              members[1, j], **kwargs)
