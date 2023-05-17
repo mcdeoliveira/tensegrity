@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "tnsgrt"
-version = "0.5"
+version = "0.5.1"
 authors = [
     { name = "Mauricio C. de Oliveira", email = "mcdeoliveira@duck.com" }
 ]
@@ -30,7 +30,8 @@ dependencies = [
     "cvxpy",
     "vispy",
     "parameterized",
-    "more-itertools"
+    "more-itertools",
+    "typing-extensions"
 ]
 
 [project.urls]
