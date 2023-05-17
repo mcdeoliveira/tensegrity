@@ -22,7 +22,7 @@ tnsgrt.structure
 tnsgrt.plotter
 ------------------
 
-.. autoclass:: tnsgrt.plotter.Plotter
+.. autoclass:: tnsgrt.plotter.plotter.Plotter
    :members:
 
 .. autoclass:: tnsgrt.plotter.matplotlib.MatplotlibPlotter

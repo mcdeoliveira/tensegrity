@@ -126,7 +126,7 @@ class TestStiffness(unittest.TestCase):
 
     def test_rigid_body_2(self):
 
-        nodes = np.matrix([[0, 0, 0], [1, 0, 0], [0, 1, 0]]).transpose()
+        nodes = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0]]).transpose()
         constraints = NodeConstraint.rigid_body_three_point_constraint(nodes)
         self.assertEqual(constraints[0].dof, 0)
         self.assertEqual(constraints[1].dof, 1)
