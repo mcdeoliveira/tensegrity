@@ -59,15 +59,17 @@ class TestStiffness(unittest.TestCase):
 
         c = NodeConstraint(np.array([[1, 1, 0]]))
         self.assertEqual(c.dof, 2)
-        np.testing.assert_allclose(c.normal, np.array([[-np.sqrt(2) / 2, -np.sqrt(2) / 2, 0]]))
-        np.testing.assert_allclose(c.basis, [[-np.sqrt(2) / 2, 0], [np.sqrt(2) / 2, 0], [0, 1]])
+        np.testing.assert_allclose(c.normal,
+                                   np.array([[-np.sqrt(2) / 2, -np.sqrt(2) / 2, 0]]))
+        np.testing.assert_allclose(c.basis,
+                                   [[-np.sqrt(2) / 2, 0], [np.sqrt(2) / 2, 0], [0, 1]])
 
         nodes = np.array([[1, 0], [0, 1], [0, 0]])
         constraints = [None]*2
         constraints[0] = NodeConstraint(np.array(([[1, 1, 0]])))
         constraints[1] = NodeConstraint()
 
-        R, T = NodeConstraint.node_constraint(nodes, constraints, storage='full')
+        R, T = NodeConstraint.node_constraint(nodes, constraints, storage='dense')
         self.assertEqual(R.shape, (4, 6))
         self.assertEqual(T.shape, (6, 2))
 
@@ -87,7 +89,7 @@ class TestStiffness(unittest.TestCase):
         constraints[0] = NodeConstraint(np.array(([[1, 1, 0]])))
         constraints[2] = NodeConstraint()
 
-        R, T = NodeConstraint.node_constraint(nodes, constraints, storage='full')
+        R, T = NodeConstraint.node_constraint(nodes, constraints, storage='dense')
         self.assertEqual(R.shape, (4, 9))
         self.assertEqual(T.shape, (9, 5))
 
@@ -107,7 +109,7 @@ class TestStiffness(unittest.TestCase):
         constraints[0] = NodeConstraint(np.array(([[1, 1, 0]])))
         constraints[2] = NodeConstraint()
 
-        R, T = NodeConstraint.node_constraint(nodes, constraints, storage='full')
+        R, T = NodeConstraint.node_constraint(nodes, constraints, storage='dense')
         self.assertEqual(R.shape, (4, 15))
         self.assertEqual(T.shape, (15, 11))
 
@@ -128,11 +130,12 @@ class TestStiffness(unittest.TestCase):
         constraints = NodeConstraint.rigid_body_three_point_constraint(nodes)
         self.assertEqual(constraints[0].dof, 0)
         self.assertEqual(constraints[1].dof, 1)
-        np.testing.assert_allclose(constraints[1].normal, np.array([[0, 0, -1], [0, 1, 0]]))
+        np.testing.assert_allclose(constraints[1].normal,
+                                   np.array([[0, 0, -1], [0, 1, 0]]))
         self.assertEqual(constraints[2].dof, 2)
         np.testing.assert_allclose(constraints[2].normal, np.array([[0, 0, -1]]))
 
-        R, T = NodeConstraint.node_constraint(nodes, constraints, storage='full')
+        R, T = NodeConstraint.node_constraint(nodes, constraints, storage='dense')
         self.assertEqual(R.shape, (6, 9))
         self.assertEqual(T.shape, (9, 3))
 
@@ -148,7 +151,8 @@ class TestStiffness(unittest.TestCase):
         # create 3 prism
         s = Prism(3)
         # set rigid body constraint on 3 bottom nodes
-        s.node_properties.loc[:2, 'constraint'] = NodeConstraint.rigid_body_three_point_constraint(s.nodes[:, :3])
+        s.node_properties.loc[:2, 'constraint'] = \
+            NodeConstraint.rigid_body_three_point_constraint(s.nodes[:, :3])
         # calculate stiffness
         S, F, v = s.stiffness()
         # calculate eigenvalues

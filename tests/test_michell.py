@@ -14,7 +14,8 @@ class TestMichell(unittest.TestCase):
         # print(f'p = {p}, q = {q}')
         self.assertEqual(s.get_number_of_nodes(), p*q+1)
         # self.assertEqual(s.get_number_of_members(), p*(q+1)+2*p)
-        # self.assertEqual(set(s.member_tags.keys()), {'bar', 'string', 'vertical', 'top', 'bottom'})
+        # self.assertEqual(set(s.member_tags.keys()),
+        # {'bar', 'string', 'vertical', 'top', 'bottom'})
         #
         # rho = 1
         # alpha = np.pi/2-np.pi/p
