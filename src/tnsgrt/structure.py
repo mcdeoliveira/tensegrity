@@ -1188,7 +1188,8 @@ class Structure:
         1. If the :math:`i` th element is a string then
 
             .. math::
-                \\Lambda = \\{ \\lambda : \\qquad \\lambda_i \\geq 0 \\quad \\text{ if } i\\text{th element is a string} \\}
+                \\Lambda = \\{ \\lambda : \\qquad \\lambda_i \\geq 0 \\quad
+                \\text{ if } i\\text{th element is a string} \\}
 
         2. All elements in ``equalities`` are set equal. For example, if::
 
@@ -1201,20 +1202,25 @@ class Structure:
 
            are added to the constraint set :math:`\\Lambda`.
 
-        3. If ``force=None`` then the sum of the bar force coefficients equals ``lambda_bar``. That is,
-           the following modified problem is solved:
+        3. If ``force=None`` then the sum of the bar force coefficients equals
+           ``lambda_bar``. That is, the following modified problem is solved:
 
             .. math::
-               A \\lambda = 0, \\quad \\mathbf{e}^T \\lambda = \\bar{\\lambda}, \\quad \\lambda \\in \\Lambda
+               A \\lambda = 0, \\quad \\mathbf{e}^T \\lambda = \\bar{\\lambda},
+               \\quad \\lambda \\in \\Lambda
 
-           in which :math:`\\mathbf{e}` is a vector that has `1` for bars and `0` for strings.
+           in which :math:`\\mathbf{e}` is a vector that has `1` for bars and `0`
+           for strings.
 
-        4. If ``force`` is not ``None`` and ``lambda_bar`` is also not ``None`` then the following problem is solved
+        4. If ``force`` is not ``None`` and ``lambda_bar`` is also not ``None`` then
+           the following problem is solved
 
             .. math::
-                A \\lambda = f, \\quad \\mathbf{e}^T \\lambda = \\bar{\\lambda}, \\quad \\lambda \\in \\Lambda
+                A \\lambda = f, \\quad \\mathbf{e}^T \\lambda = \\bar{\\lambda},
+                \\quad \\lambda \\in \\Lambda
 
-            **WARNING:** This problem may not be feasible for all :math:`\\bar{\\lambda} > 0`!
+            **WARNING:** This problem may not be feasible for all
+            :math:`\\bar{\\lambda} > 0`!
 
         """
 
