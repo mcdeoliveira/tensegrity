@@ -178,18 +178,18 @@ def plot_arrows(ax: plt.Axes,
                 **kwargs) -> None:
     if plot_3d_arrows:
         # plot arrows
-        for org, dir in zip(list(map(np.ravel,
-                                     np.split(origin, origin.shape[1], axis=1))),
-                            list(map(np.ravel,
-                                     np.split(direction, direction.shape[1], axis=1)))):
-            length = np.linalg.norm(dir)
+        for org, dirc in zip(list(map(np.ravel,
+                                      np.split(origin, origin.shape[1], axis=1))),
+                             list(map(np.ravel,
+                                      np.split(direction, direction.shape[1], axis=1)))):
+            length = np.linalg.norm(dirc)
             if length > 0:
                 # plot line
-                plot_solid_cylinder(ax, org, org + dir, radius=radius, **kwargs)
+                plot_solid_cylinder(ax, org, org + dirc, radius=radius, **kwargs)
                 # plot cone
                 plot_truncated_cylinder(ax,
-                                        org + (1-arrow_length_ratio)*dir,
-                                        org + dir,
+                                        org + (1-arrow_length_ratio)*dirc,
+                                        org + dirc,
                                         radius + arrow_length_ratio * length/2,
                                         radius, **kwargs)
     else:

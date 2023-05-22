@@ -21,8 +21,8 @@ Visualization is supported via `matplotlib <https://matplotlib.org>`_ and
    :caption: User guide
 
    usage/quickstart
-   usage/structure
    usage/properties
+   usage/structure
    usage/transformations
    usage/examples
 
