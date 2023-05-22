@@ -2,7 +2,7 @@ import unittest
 
 import numpy as np
 
-from tnsgrt.utils import rotation_2d, rotation_3d
+from tnsgrt.utils import rotation_2d, rotation_3d, orthogonalize
 
 
 class TestUtils(unittest.TestCase):
@@ -50,3 +50,48 @@ class TestUtils(unittest.TestCase):
 
         rotation = rotation_3d(np.pi/4 * z)
         np.testing.assert_almost_equal(rotation @ v, np.array([1, 0, 1])/np.sqrt(2))
+
+    def test_orthogonalize(self):
+
+        a = np.array([[0., 0., 0.],
+                      [0., 0., -1]]).transpose()
+        rank, q1, q2 = orthogonalize(a, mode='complete')
+        self.assertEqual(rank, 1)
+        np.testing.assert_almost_equal(q1, np.array([[0, 0, 1]]).transpose())
+        np.testing.assert_almost_equal(q2, np.array([[1, 0, 0], [0, 1, 0]]).transpose())
+
+        a = np.array([[0., 0., 0.],
+                      [1., 0., 0]]).transpose()
+        rank, q1, q2 = orthogonalize(a, mode='complete')
+        self.assertEqual(rank, 1)
+        np.testing.assert_almost_equal(q1, np.array([[1, 0, 0]]).transpose())
+        np.testing.assert_almost_equal(q2, np.array([[0, 1, 0], [0, 0, 1]]).transpose())
+
+        a = np.array([[0., 0., 0.],
+                      [1., 1., 0]]).transpose()
+        rank, q1, q2 = orthogonalize(a, mode='complete')
+        self.assertEqual(rank, 1)
+        np.testing.assert_almost_equal(q1,
+                                       (1/np.sqrt(2))*np.array([[1, 1, 0]]).transpose())
+        np.testing.assert_almost_equal(q2,
+                                       np.array([[-1/np.sqrt(2), 1/np.sqrt(2), 0],
+                                                 [0, 0, 1]]).transpose())
+
+        a = np.array([[0., 0., 0., 0., 0., 0., 0., 0.],
+                      [0., 0., -1., 0., 0., 0., 0., 0.],
+                      [0., 0., 0., 0., 0., -1., 0., 0.],
+                      [0., 0., 0., 0., 0., 0., 0., -1.]]).transpose()
+        rank, q1, q2 = orthogonalize(a, mode='complete')
+        self.assertEqual(rank, 3)
+        np.testing.assert_almost_equal(q1,
+                                       np.array([[0., 0., 1., 0., 0., 0., 0., 0.],
+                                                 [0., 0., 0., 0., 0., 1., 0., 0.],
+                                                 [0., 0., 0., 0., 0., 0., 0., 1.]])
+                                       .transpose())
+        np.testing.assert_almost_equal(q2,
+                                       np.array([[1., 0., 0., 0., 0., 0., 0., 0.],
+                                                 [0., 0., 0., 0., 1., 0., 0., 0.],
+                                                 [0., 1., 0., 0., 0., 0., 0., 0.],
+                                                 [0., 0., 0., 0., 0., 0., 1., 0.],
+                                                 [0., 0., 0., 1., 0., 0., 0., 0.]])
+                                       .transpose())

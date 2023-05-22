@@ -1,6 +1,8 @@
 import unittest
 
 import numpy as np
+
+from tnsgrt.stiffness import NodeConstraint
 from tnsgrt.structure import Structure
 
 
@@ -112,3 +114,57 @@ class TestStructure(unittest.TestCase):
         self.assertTrue(np.abs(np.mean(
             s.get_member_properties(
                 s.get_members_by_tag('bar'), 'lambda_')) + 2) < 1e-6)
+
+    def test_constraints(self):
+
+        # planar pole
+        nodes = np.array([[-1, 0, 0], [0, 0, 0], [0, 1, 0], [1, 0, 0]]).transpose()
+        members = np.array([[0, 2], [2, 3], [1, 2]]).transpose()
+        s = Structure(nodes, members, number_of_strings=2)
+
+        # no equilibrium possible
+        self.assertRaises(Exception, s.equilibrium)
+
+        # add constraints
+        s.set_node_properties([0, 1, 3], 'constraint', NodeConstraint())
+
+        # equilibrium with constraints
+        fr = s.equilibrium()
+        lambda_ = np.array([1/2, 1/2, -1])
+        np.testing.assert_allclose(s.member_properties['lambda_'], lambda_)
+        fr_ = np.array([[-1/2, -1/2, 0], [0, 1, 0],
+                        [0, 0, 0], [1/2, -1/2, 0]]).transpose()
+        np.testing.assert_allclose(fr, fr_)
+
+        # planar inverted V
+        nodes = np.array([[-1, 0, 0], [0, 1, 0], [1, 0, 0]]).transpose()
+        members = np.array([[0, 2], [0, 1], [1, 2]]).transpose()
+        s = Structure(nodes, members, number_of_strings=1)
+
+        # no equilibrium possible
+        self.assertRaises(Exception, s.equilibrium)
+
+        # add constraints
+        s.set_node_properties([0, 2], 'constraint', NodeConstraint())
+
+        # equilibrium with constraints
+        fe = np.array([[0, 0, 0], [0, -1, 0], [0, 0, 0]]).transpose()
+        fr = s.equilibrium(fe)
+        lambda_ = np.array([0, -1/2, -1/2])
+        np.testing.assert_allclose(s.member_properties['lambda_'], lambda_, atol=1e-6)
+        fr_ = np.array([[1/2, 1/2, 0], [0, 0, 0], [-1/2, 1/2, 0]]).transpose()
+        np.testing.assert_allclose(fr, fr_)
+
+        # add constraints
+        s.set_node_properties([0], 'constraint', NodeConstraint())
+        s.set_node_properties([2], 'constraint',
+                              NodeConstraint(constraint=np.array([[0, 1, 0],
+                                                                  [0, 0, 1]])))
+
+        # equilibrium with constraints
+        fr = s.equilibrium(fe)
+        lambda_ = np.array([1/4, -1/2, -1/2])
+        np.testing.assert_allclose(s.member_properties['lambda_'], lambda_)
+        fr_ = np.array([[0, 1/2, 0], [0, 0, 0], [0, 1/2, 0]]).transpose()
+        np.testing.assert_allclose(fr, fr_, atol=1e-6)
+

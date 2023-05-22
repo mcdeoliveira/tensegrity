@@ -5,6 +5,7 @@ import numpy as np
 
 from tnsgrt.prism import Prism
 from tnsgrt.stiffness import NodeConstraint
+from tnsgrt.structure import Structure
 
 
 class TestStiffness(unittest.TestCase):
@@ -60,7 +61,7 @@ class TestStiffness(unittest.TestCase):
         c = NodeConstraint(np.array([[1, 1, 0]]))
         self.assertEqual(c.dof, 2)
         np.testing.assert_allclose(c.normal,
-                                   np.array([[-np.sqrt(2) / 2, -np.sqrt(2) / 2, 0]]))
+                                   np.array([[np.sqrt(2) / 2, np.sqrt(2) / 2, 0]]))
         np.testing.assert_allclose(c.basis,
                                    [[-np.sqrt(2) / 2, 0], [np.sqrt(2) / 2, 0], [0, 1]])
 
@@ -133,7 +134,7 @@ class TestStiffness(unittest.TestCase):
         np.testing.assert_allclose(constraints[1].normal,
                                    np.array([[0, 0, -1], [0, 1, 0]]))
         self.assertEqual(constraints[2].dof, 2)
-        np.testing.assert_allclose(constraints[2].normal, np.array([[0, 0, -1]]))
+        np.testing.assert_allclose(constraints[2].normal, np.array([[0, 0, 1]]))
 
         R, T = NodeConstraint.node_constraint(nodes, constraints, storage='dense')
         self.assertEqual(R.shape, (6, 9))
@@ -161,6 +162,40 @@ class TestStiffness(unittest.TestCase):
         self.assertEqual(np.count_nonzero(d < 1e-3), 0)
         # 1 soft node
         self.assertEqual(np.count_nonzero(d < 1e6), 1)
+
+    def test_planar(self):
+
+        nodes = np.array([[0, 0, 0], [0, 1, 0], [1, 1, 0], [1, 0, 0]]).transpose()
+        members = np.array([[0, 1], [1, 2], [2, 3], [3, 0], [0, 2], [1, 3]]).transpose()
+        s = Structure(nodes, members, number_of_strings=4)
+        s.remove_members([3])
+
+        s.set_node_properties(0, 'constraint', NodeConstraint())
+        s.set_node_properties(3, 'constraint',
+                              NodeConstraint(constraint=np.array([[1, 0, 0]])))
+
+        s.equilibrium()
+        s.update_member_properties()
+
+        stiffness, _, _ = s.stiffness(storage='dense', apply_planar_constraint=True)
+
+        # d = stiffness.eigs(k=6)[0]
+        # # no rigid body nodes
+        # self.assertEqual(np.count_nonzero(d < 1e-3), 0)
+        # # 1 soft node
+        # self.assertEqual(np.count_nonzero(d < 1e6), 1)
+
+    def test_3d(self):
+
+        s = Prism()
+
+        f = np.zeros((3, 6))
+        fz = np.array([[0, 0, 1]]).transpose()
+        f[:, 3:] = -fz
+
+        s.set_node_properties([0, 1, 2], 'constraint', NodeConstraint())
+
+        reactions = s.equilibrium(f)
 
 
 if __name__ == '__main__':

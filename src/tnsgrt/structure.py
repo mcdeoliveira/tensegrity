@@ -10,6 +10,7 @@ from collections import ChainMap, defaultdict
 
 import numpy as np
 import numpy.typing as npt
+import pandas
 import pandas as pd
 import scipy
 
@@ -165,6 +166,27 @@ class Structure:
 
         # set nodes
         self.nodes: npt.NDArray[np.float_] = nodes
+
+    def get_node_values(self, index: Union[int, Sequence[int], slice]) -> npt.NDArray:
+        """
+        Get node values
+
+        :param index: the index of the nodes to get;
+                      can be a slice, integer, or sequence
+        :return: the node values
+        """
+        return self.nodes[:, index]
+
+    def set_node_values(self, index: Union[int, Sequence[int], slice],
+                        nodes: npt.NDArray) -> None:
+        """
+        Set node values
+
+        :param index: the index of the nodes to set;
+                      can be a slice, integer, or sequence
+        :param nodes: the values to set
+        """
+        self.nodes[:, index] = nodes
 
     def add_nodes(self, nodes: npt.ArrayLike,
                   node_tags: Optional[Dict[str, npt.NDArray[np.int64]]] = None) -> None:
@@ -1164,7 +1186,7 @@ pandas.DataFrame.loc.html>`_
                     force: Optional[npt.ArrayLike] = None,
                     lambda_bar: Optional[float] = None,
                     equalities: Optional[List[npt.ArrayLike]] = None,
-                    epsilon: float = 1e-7) -> None:
+                    epsilon: float = 1e-7) -> npt.NDArray:
         """
         Solves for the set of internal forces that ensures the equilibrium of the
         current ``Structure`` in response to the vector of external forces ``forces``
@@ -1230,8 +1252,11 @@ pandas.DataFrame.loc.html>`_
         """
 
         number_of_nodes = self.get_number_of_nodes()
-        number_of_strings = len(self.member_tags.get('string', []))
-        number_of_bars = len(self.member_tags.get('bar', []))
+
+        strings = self.member_tags.get('string', [])
+        bars = self.member_tags.get('bar', [])
+        number_of_strings = len(strings)
+        number_of_bars = len(bars)
         number_of_members = number_of_strings + number_of_bars
 
         assert number_of_members == number_of_bars + number_of_strings, \
@@ -1241,7 +1266,6 @@ pandas.DataFrame.loc.html>`_
 
         # member vectors
         member_vectors = self.get_member_vectors()
-        strings = self.member_tags['string']
 
         # coefficient matrix
         Aeq = np.zeros((3 * number_of_nodes, number_of_members))
@@ -1266,17 +1290,37 @@ pandas.DataFrame.loc.html>`_
                 jj = 3 * int(self.members[1, i])
                 Aeq[jj:jj+3, i] = -member_vectors[:, i]
 
-        A = Aeq
-        m = 3 * number_of_nodes
+        # node constraints
+        constraints = self.node_properties['constraint']
+        has_constraints = constraints.isna().sum() < self.get_number_of_nodes()
+        if has_constraints:
+            number_of_reactions = sum(3 - c.dof for c in constraints if c is not None)
+            Ac = np.zeros((3*number_of_nodes, number_of_reactions))
+            jj = 0
+            for i, c in enumerate(constraints):
+                if c is not None:
+                    nocj = 3 - c.dof
+                    Ac[3*i:3*(i+1), jj:jj+nocj] = -c.normal.transpose()
+                    jj += nocj
 
-        # sum of the bars
-        ee = np.ones((1, number_of_members)) / self.get_number_of_members_by_tag('bar')
-        ee[:, strings] = 0
-        # TODO: do we need to worry if no bars?
+            A = np.hstack((Aeq, Ac))
+            m = 3 * number_of_nodes + number_of_reactions
+
+        else:
+            number_of_reactions = 0
+            A = Aeq
+            m = 3 * number_of_nodes
+
+        # average of the bars
+        ee = np.zeros((1, number_of_members + number_of_reactions))
+        if number_of_bars:
+            ee[:, bars] = 1 / number_of_bars
+        else:
+            ee[:, strings] = 1 / number_of_strings
+            warnings.warn('structure has no bars, prestressing strings')
 
         if force is None:
             # no external forces
-            # A = np.vstack((A, np.ones((1, number_of_members))))
             A = np.vstack((A, ee))
             blo = bup = np.hstack((np.zeros((3 * number_of_nodes,)), 1))
             if lambda_bar is None:
@@ -1299,7 +1343,8 @@ pandas.DataFrame.loc.html>`_
         # indices in each row are set to be equal
         if equalities is not None:
             number_of_constraints = sum(map(len, equalities)) - len(equalities)
-            Aeq = np.zeros((number_of_constraints, number_of_members))
+            Aeq = np.zeros((number_of_constraints,
+                            number_of_members + number_of_reactions))
             beq = np.zeros((number_of_constraints, ))
             ii = 0
             for eqs in equalities:
@@ -1316,28 +1361,44 @@ pandas.DataFrame.loc.html>`_
         xup = None
         xlo = None
         if number_of_strings:
-            xlo = np.full((number_of_members, ), -np.inf)
-            xlo[self.member_tags['string']] = 0
+            xlo = np.full((number_of_members + number_of_reactions, ), -np.inf)
+            xlo[strings] = 0
 
         # cost function
-        n = number_of_members
-        c = np.ones((n,))
+        n = number_of_members + number_of_reactions
+        c = np.hstack((np.ones((number_of_members,)), np.zeros((number_of_reactions,))))
 
         # solve lp
-        cost, gamma, status = optim.lp(n, m, c, A, blo, bup, xlo, xup)
+        cost, gamma, status = optim.lp(c, A, blo, bup, xlo, xup)
 
         # if infeasible, throw error
         if status == 'infeasible':
+            # TODO: Should we run a feasibility test if numerical issues arise
+            # optim.feasibility(A, blo, bup, xlo, xup)
             raise Exception('could not find equilibrium')
+
+        # sum reactions at nodes
+        reactions = np.zeros((3, number_of_nodes))
+        if number_of_reactions:
+            fr = gamma[number_of_members:]
+            gamma = gamma[:number_of_members]
+            # set reactions per node
+            jj = 0
+            for i, c in enumerate(constraints):
+                if c is not None:
+                    nocj = 3 - c.dof
+                    reactions[:, i] = np.sum(fr[jj:jj+nocj] * c.normal.transpose(),
+                                             axis=1)
+                    jj += nocj
 
         # flip sign for bars
         lambda_ = gamma
         if number_of_bars:
-            lambda_[self.member_tags['bar']] *= -1
+            lambda_[bars] *= -1
 
             if force is None:
                 # scale solution for bars
-                scale = -np.sum(lambda_[self.member_tags['bar']]) / number_of_bars
+                scale = -np.sum(lambda_[bars]) / number_of_bars
                 lambda_ *= np.abs(lambda_bar) / scale
 
         # assign lambda
@@ -1346,7 +1407,12 @@ pandas.DataFrame.loc.html>`_
         # update force
         self.update_member_properties('force')
 
-    def stiffness(self, epsilon: float = 1e-6, storage: str = 'sparse',
+        # return reactions
+        return reactions
+
+    def stiffness(self,
+                  force: Optional[npt.ArrayLike] = None,
+                  epsilon: float = 1e-6, storage: str = 'sparse',
                   apply_rigid_body_constraint: bool = False,
                   apply_planar_constraint: bool = False):
         """
@@ -1387,6 +1453,11 @@ pandas.DataFrame.loc.html>`_
         k = self.member_properties['stiffness'].values
         lambda_ = self.member_properties['lambda_'].values
         mass = self.member_properties['mass'].values
+
+        # raise error if k is not positive
+        if np.any(k < epsilon):
+            raise Exception('stiffness is not positive; did you call '
+                            'Structure.update_members()?')
 
         # compute potential
         v = np.sum(((lambda_ * member_length) ** 2) / k / 2)
@@ -1447,12 +1518,6 @@ pandas.DataFrame.loc.html>`_
             # dense storage
             M = np.diag(np.kron(M, np.ones((3,))))
 
-        # Check forces
-        sum_of_forces = np.linalg.norm(F, ord='fro')
-        if sum_of_forces > epsilon:
-            warnings.warn(f'Structure::stiffness: force balance not satisfied, '
-                          f'sum of forces = {sum_of_forces}')
-
         # Build stiffness object
         stiffness = Stiffness(K, M)
 
@@ -1466,11 +1531,27 @@ pandas.DataFrame.loc.html>`_
         if apply_rigid_body_constraint:
             # apply rigid body constraints
             stiffness.apply_constraint(
-                *NodeConstraint.rigid_body_constraint(self.nodes), local=False)
+                *NodeConstraint.rigid_body_constraint(self.nodes),
+                local=False, verbose=False)
         if apply_planar_constraint:
             # apply planar constraints
             stiffness.apply_constraint(
-                *NodeConstraint.planar_constraint(self.nodes), local=False)
+                *NodeConstraint.planar_constraint(self.nodes),
+                local=False, verbose=False)
+
+        # Check forces
+        if force is not None:
+            f = F + force
+        else:
+            f = F
+        if stiffness.T is not None:
+            # project forces on allowed displacements
+            sum_of_forces = np.linalg.norm(stiffness.T.transpose() @ f.ravel(order='F'))
+        else:
+            sum_of_forces = np.linalg.norm(f, ord='fro')
+        if sum_of_forces > epsilon:
+            warnings.warn(f'Structure::stiffness: force balance not satisfied, '
+                          f'sum of forces = {sum_of_forces}')
 
         return stiffness, F, v
 

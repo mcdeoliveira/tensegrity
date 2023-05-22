@@ -31,9 +31,10 @@ def rotation_3d(v: npt.NDArray) -> npt.NDArray:
     return scipy.spatial.transform.Rotation.from_rotvec(v).as_matrix()
 
 
-def orthogonalize(a: npt.NDArray, epsilon: float = 1e-8,
+def orthogonalize(a: Union[npt.NDArray, scipy.sparse.csr_matrix],
+                  epsilon: float = 1e-8,
                   mode: Literal['reduced', 'complete'] = 'reduced')\
-        -> Union[Tuple[int, npt.NDArray, npt.NDArray],Tuple[int, npt.NDArray]]:
+        -> Union[Tuple[int, npt.NDArray, npt.NDArray], Tuple[int, npt.NDArray]]:
     """
     Ortoghonalize the constraint
 
@@ -49,37 +50,41 @@ def orthogonalize(a: npt.NDArray, epsilon: float = 1e-8,
     **Notes:**
 
         1. If ``mode = 'reduced'`` the constraint coefficient is normalized at the
-           constructor by calculating the *reduced* QR decomposition
+           constructor by calculating the *reduced* SVD decomposition
 
            .. math::
-               A = Q R, \\quad Q^T Q = I, \\quad R \\text{ is upper triangular}
+               A = V S U^T, \\quad V^T V = I, \\quad U^T U = I, \\quad
+               S \\text{ is diagonal}
 
            Assuming that :math:`A` is full rank, the equivalent orthogonal constraint
 
            .. math::
-               A^T x = R^T V^T x = 0 \\quad \\Leftrightarrow \\quad V^T x = 0
+               A^T x = U S V^T x = 0 \\quad \\Leftrightarrow \\quad V^T x = 0
 
-           is obtained in which the coefficient is the orthogonal matrix :math:`V = Q`
+           is obtained in which the coefficient is the orthogonal matrix :math:`V`
 
         2. If ``mode = 'complete'`` the constraint coefficient is normalized at the
-           constructor by calculating the *complete* QR decomposition
+           constructor by calculating the *complete* SVD decomposition
 
            .. math::
-               A = Q R, \\quad Q^T Q = Q Q^T = I, \\quad R \\text{ is upper triangular}
+               A = \\tilde{V} \\tilde{S} \\tilde{U}^T, \\quad
+               \\tilde{V}^T \\tilde{V} = \\tilde{V} \\tilde{V}^T = I, \\quad
+               \\tilde{U}^T \\tilde{U} = \\tilde{U} \\tilde{U}^T = I, \\quad
+               \\tilde{S} \\text{ is diagonal}
 
            Assuming that :math:`A` is full rank, partition
 
            .. math::
-               \\begin{bmatrix} V & T \\end{bmatrix} = Q =
-               \\begin{bmatrix} Q_1 & Q_2 \\end{bmatrix}, \\qquad R =
-               \\begin{bmatrix} R_1 \\\\ 0 \\end{bmatrix}, \\quad
-               R_1 \\text{ is upper triangular}
+               \\begin{bmatrix} V & T \\end{bmatrix} = \\tilde{V}, \\qquad
+               \\begin{bmatrix} U & Q \\end{bmatrix} = \\tilde{U}, \\qquad
+               \\tilde{S} = \\begin{bmatrix} S \\\\ 0 \\end{bmatrix}, \\quad
+               S \\text{ is diagonal}
 
            to obtain the equivalent orthogonal constraint and its solution
 
            .. math::
-               A^T x = R_1^T V^T x = 0 \\quad \\Leftrightarrow \\quad V^T x = 0,
-               \\qquad x = T y
+               A^T x = U S V^T x = 0 \\quad \\Leftrightarrow \\quad V^T x = 0,
+               \\qquad x = T \\, y
 
            The matrix :math:`T` is an orthogonal basis for the constraint null space
 
@@ -87,18 +92,17 @@ def orthogonalize(a: npt.NDArray, epsilon: float = 1e-8,
            rank of :math:`A` when it is rank-deficient
     """
     assert a.shape[1] < a.shape[0], 'a must be tall'
-    # QR decomposition
-    if mode == 'complete':
-        q, r = np.linalg.qr(a, mode='complete')
-    else:
-        q, r = np.linalg.qr(a)
-    # check for rank
-    rank = np.count_nonzero(np.abs(np.diag(r)) > epsilon)
+
+    # SVD decomposition
+    u, s, vh = np.linalg.svd(a.toarray() if scipy.sparse.issparse(a) else a,
+                             full_matrices=(mode == 'complete'))
+
+    rank = np.count_nonzero(s > epsilon)
     # return tuple
     if mode == 'complete':
-        return rank, q[:, :rank], q[:, rank:]
+        return rank, u[:, :rank], u[:, rank:]
     else:
-        return rank, q[:, :rank]
+        return rank, u[:, :rank]
 
 
 def is_colinear(a: npt.NDArray, b: npt.NDArray, epsilon: float = 1e-8) -> bool:

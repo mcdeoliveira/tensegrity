@@ -3,9 +3,11 @@ from typing import Tuple, Optional
 import numpy as np
 import numpy.typing as npt
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
 from .plotter import Plotter
 from tnsgrt.structure import Structure
+from ..utils import Colors
 
 
 class MatplotlibPlotter(Plotter):
@@ -20,55 +22,17 @@ class MatplotlibPlotter(Plotter):
     defaults = {
         'plot_nodes': True,
         'plot_members': True,
+        'plot_constraints': True,
         'node_marker': 'o',
         'node_markersize': 4,
         'node_linewidth': 2,
         'node_linestyle': 'none',
         'node_facecolor': (0, 0, 0),
-        'node_edgecolor': (1, 1, 1)
+        'node_edgecolor': (1, 1, 1),
+        'constraint_facecolor': Colors.GREEN.value,
+        'constraint_edgecolor': Colors.GREEN.value,
+        'constraint_size': 0.1
     }
-
-    @staticmethod
-    def plot_line(ax: plt.Axes, nodes: npt.NDArray[np.float_],
-                  i: int, j: int, **kwargs) -> None:
-        """
-        Plot line connecting ``nodes[i]`` to ``nodes[j]``
-
-        :param ax: :class:`matplotlib.pyplot.axis` object
-        :param nodes: 3 x m array of nodes
-        :param i: the index of the beginning of the line
-        :param j: the index of the end of the line
-        :param \**kwargs: additional keywords arguments passed to
-                          ``matplotlib.axis.plot``
-        """
-        # draw lines
-        x = np.hstack((nodes[0, i], nodes[0, j]))
-        y = np.hstack((nodes[1, i], nodes[1, j]))
-        z = np.hstack((nodes[2, i], nodes[2, j]))
-        ax.plot(x, y, z, **kwargs)
-
-    @staticmethod
-    def plot_solid_cylinder(ax: plt.Axes, nodes: npt.NDArray[np.float_],
-                            i: int, j: int, volume: float = 0., radius: float = 0.01,
-                            n: int = 12, **kwargs) -> None:
-        """
-        Plot solid cylinder connecting ``nodes[i]`` to ``nodes[j]``
-
-        :param ax: :class:`matplotlib.pyplot.axis` object
-        :param nodes: 3 x m array of nodes
-        :param i: the index of the beginning of the line
-        :param j: the index of the end of the line
-        :param volume: the cylinder volume
-        :param radius: the cylinder radius
-        :param n: the number of sides of the cylinder
-        :param \**kwargs: additional keywords arguments passed to
-                          ``matplotlib.axis.plot``
-        """
-
-        # cylinder nodes
-        x, y, z = Plotter.cylinder(nodes[:, j], nodes[:, i], volume, radius, n)
-
-        ax.plot_surface(x, y, z, **kwargs)
 
     def __init__(self, plotter: Optional['MatplotlibPlotter'] = None,
                  fig: Optional[plt.Figure] = None, ax: Optional[plt.Axes] = None):
@@ -136,6 +100,40 @@ class MatplotlibPlotter(Plotter):
                          markerfacecolor=defaults['node_facecolor'],
                          markeredgecolor=defaults['node_edgecolor'])
 
+        # plot constraints
+        if defaults['plot_constraints']:
+            facecolor = defaults['constraint_facecolor']
+            edgecolor = defaults['constraint_edgecolor']
+            size = defaults['constraint_size']
+            for j, c in enumerate(s.node_properties['constraint']):
+                if c is not None:
+
+                    dofj = c.dof
+                    if dofj == 0:
+                        # all constrained, plot sphere
+                        plot_sphere(self.ax, nodes[:, j],
+                                    radius=size/2,
+                                    facecolor=facecolor,
+                                    edgecolor=edgecolor)
+
+                    elif dofj == 1:
+                        # plot line
+                        v = size * c.basis[:, 0]
+                        plot_line(self.ax,
+                                  nodes[:, j] + v,
+                                  nodes[:, j] - v,
+                                  color=facecolor)
+
+                    elif dofj == 2:
+                        # plot plane
+                        v = size * c.basis[:, 0]
+                        u = size * c.basis[:, 1]
+                        plot_parallelogram(self.ax,
+                                           nodes[:, j] - v/2 - u/2,
+                                           u, v,
+                                           facecolor=facecolor,
+                                           edgecolor=edgecolor)
+
         # plot members
         members = s.members
         if defaults['plot_members']:
@@ -143,16 +141,151 @@ class MatplotlibPlotter(Plotter):
                 if s.member_properties.loc[j, 'visible']:
                     if s.has_member_tag(j, 'string'):
                         # plot strings as lines
-                        kwargs = s.get_member_properties(j, 'facecolor',
+                        kwargs = s.get_member_properties(j,
+                                                         'facecolor',
                                                          'linewidth').to_dict()
                         kwargs['color'] = kwargs['facecolor']
                         del kwargs['facecolor']
-                        MatplotlibPlotter.plot_line(self.ax, nodes, members[0, j],
-                                                    members[1, j], **kwargs)
+                        plot_line(self.ax,
+                                  nodes[:, members[0, j]],
+                                  nodes[:, members[1, j]], **kwargs)
                     else:
                         # plot others as solid elements
-                        kwargs = s.get_member_properties(j, 'facecolor', 'edgecolor',
+                        kwargs = s.get_member_properties(j,
+                                                         'facecolor', 'edgecolor',
                                                          'volume', 'radius').to_dict()
-                        MatplotlibPlotter.plot_solid_cylinder(self.ax, nodes,
-                                                              members[0, j],
-                                                              members[1, j], **kwargs)
+                        node_i = nodes[:, members[0, j]]
+                        node_j = nodes[:, members[1, j]]
+                        volume = kwargs.pop('volume')
+                        if volume > 0.:
+                            kwargs['radius'] = \
+                                np.sqrt((volume / np.linalg.norm(node_i - node_j))
+                                        / np.pi)
+
+                        plot_solid_cylinder(self.ax, node_i, node_j, **kwargs)
+
+    def plot_arrows(self,
+                    origin: npt.NDArray[np.float_], direction: npt.NDArray[np.float_],
+                    **kwargs) -> None:
+        plot_arrows(self.ax, origin, direction, **kwargs)
+
+
+def plot_arrows(ax: plt.Axes,
+                origin: npt.NDArray[np.float_], direction: npt.NDArray[np.float_],
+                arrow_length_ratio: float = 0.2,
+                radius: float = 0.01,
+                plot_3d_arrows: bool = True,
+                **kwargs) -> None:
+    if plot_3d_arrows:
+        # plot arrows
+        for org, dir in zip(list(map(np.ravel,
+                                     np.split(origin, origin.shape[1], axis=1))),
+                            list(map(np.ravel,
+                                     np.split(direction, direction.shape[1], axis=1)))):
+            length = np.linalg.norm(dir)
+            if length > 0:
+                # plot line
+                plot_solid_cylinder(ax, org, org + dir, radius=radius, **kwargs)
+                # plot cone
+                plot_truncated_cylinder(ax,
+                                        org + (1-arrow_length_ratio)*dir,
+                                        org + dir,
+                                        radius + arrow_length_ratio * length/2,
+                                        radius, **kwargs)
+    else:
+        ax.quiver(*np.split(origin, 3), *np.split(direction, 3),
+                  arrow_length_ratio=arrow_length_ratio, **kwargs)
+
+
+def plot_line(ax: plt.Axes,
+              begin: npt.NDArray[np.float_],
+              end: npt.NDArray[np.float_],
+              **kwargs) -> None:
+    """
+    Plot line connecting ``x`` to ``y``
+
+    :param ax: :class:`matplotlib.pyplot.axis` object
+    :param begin: beginning of line
+    :param end: end of line
+    :param \**kwargs: additional keywords arguments passed to
+                      ``matplotlib.axis.plot``
+    """
+    # draw lines
+    x, y, z = tuple(map(np.ravel, np.split(np.vstack((begin, end)).transpose(), 3)))
+    ax.plot(x, y, z, **kwargs)
+
+
+def plot_parallelogram(ax: plt.Axes,
+                       bottom_left: npt.NDArray[np.float_],
+                       u: npt.NDArray[np.float_],
+                       v: npt.NDArray[np.float_],
+                       fill: bool = True,
+                       **kwargs) -> None:
+    """
+    Plot parallelogram from ``bottom_left`` in the directions ``u`` and ``v``
+
+    :param ax: :class:`matplotlib.pyplot.axis` object
+    :param bottom_left: bottom left corner of rectangle
+    :param v: the ``u`` direction
+    :param u: the ``v`` direction
+    :param fill: if ``True`` fill area
+    :param \**kwargs: additional keywords arguments passed to
+                      ``matplotlib.axis.plot``
+    """
+    vertices = np.vstack((bottom_left, bottom_left + u,
+                          bottom_left + u + v, bottom_left + v))
+
+    if fill:
+        # # draw surface
+        ax.add_collection3d(Poly3DCollection((vertices,), **kwargs))
+    else:
+        # draw edges only
+        ax.plot(vertices[:, 0], vertices[:, 1], vertices[:, 2], **kwargs)
+
+
+def plot_solid_cylinder(ax: plt.Axes,
+                        node_i: npt.NDArray[np.float_],
+                        node_j: npt.NDArray[np.float_],
+                        radius: float = 0.01,
+                        n: int = 12, **kwargs) -> None:
+    """
+    Plot solid cylinder connecting ``nodes[i]`` to ``nodes[j]``
+
+    :param ax: :class:`matplotlib.pyplot.axis` object
+    :param node_i: center of base node
+    :param node_j: center of top node
+    :param radius: the cylinder radius
+    :param n: the number of sides of the cylinder
+    :param \**kwargs: additional keywords arguments passed to
+                      ``matplotlib.axis.plot``
+    """
+
+    # cylinder nodes
+    x, y, z = Plotter.cylinder(node_i, node_j, radius, n)
+
+    ax.plot_surface(x, y, z, **kwargs)
+
+
+def plot_sphere(ax: plt.Axes,
+                center: npt.NDArray[np.float_],
+                radius: float = 0.01, n: int = 12, **kwargs) -> None:
+
+    # sphere nodes
+    x, y, z = Plotter.unit_sphere(n, radius)
+
+    ax.plot_surface(x + center[0], y + center[1], z + center[2], **kwargs)
+
+
+def plot_truncated_cylinder(ax: plt.Axes,
+                            base_center: npt.NDArray[np.float_],
+                            top_center: npt.NDArray[np.float_],
+                            base_radius: float = 0.01,
+                            top_radius: float = 0.01,
+                            n: int = 12,
+                            **kwargs) -> None:
+
+    # cone nodes
+    x, y, z = Plotter.truncated_cylinder(base_center, top_center,
+                                         base_radius, top_radius, n)
+
+    ax.plot_surface(x, y, z, **kwargs)
