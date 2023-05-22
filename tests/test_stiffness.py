@@ -168,34 +168,52 @@ class TestStiffness(unittest.TestCase):
         nodes = np.array([[0, 0, 0], [0, 1, 0], [1, 1, 0], [1, 0, 0]]).transpose()
         members = np.array([[0, 1], [1, 2], [2, 3], [3, 0], [0, 2], [1, 3]]).transpose()
         s = Structure(nodes, members, number_of_strings=4)
-        s.remove_members([3])
 
         s.set_node_properties(0, 'constraint', NodeConstraint())
         s.set_node_properties(3, 'constraint',
-                              NodeConstraint(constraint=np.array([[1, 0, 0]])))
+                              NodeConstraint(constraint=np.array([[0, 1, 0]])))
 
-        s.equilibrium()
+        reactions = s.equilibrium()
+        np.testing.assert_allclose(reactions,
+                                   np.array([[0,0,0],[0,0,0],
+                                             [0,0,0],[0,0,0]]).transpose(), atol=1e-6)
+        np.testing.assert_allclose(s.member_properties['lambda_'],
+                                   np.array([1,1,1,1,-1,-1]), atol=1e-6)
+
+        f = np.array([[0,0,0],[0,-1,0],[0,-1,0],[0,0,0]]).transpose()
+        reactions = s.equilibrium(f)
+        np.testing.assert_allclose(reactions,
+                                   np.array([[0,1,0],[0,0,0],
+                                             [0,0,0],[0,1,0]]).transpose(), atol=1e-6)
+        np.testing.assert_allclose(s.member_properties['lambda_'],
+                                   np.array([0,1,0,1,-1,-1]), atol=1e-6)
+
         s.update_member_properties()
-
         stiffness, _, _ = s.stiffness(storage='dense', apply_planar_constraint=True)
 
-        # d = stiffness.eigs(k=6)[0]
-        # # no rigid body nodes
-        # self.assertEqual(np.count_nonzero(d < 1e-3), 0)
-        # # 1 soft node
-        # self.assertEqual(np.count_nonzero(d < 1e6), 1)
+        d = stiffness.eigs(k=6)[0]
+        # no rigid body nodes
+        self.assertEqual(np.count_nonzero(d < 1e-3), 0)
 
     def test_3d(self):
 
-        s = Prism()
+        s = Prism(alpha=(35/180)*np.pi, calculate_equilibrium=False)
 
         f = np.zeros((3, 6))
         fz = np.array([[0, 0, 1]]).transpose()
         f[:, 3:] = -fz
 
-        s.set_node_properties([0, 1, 2], 'constraint', NodeConstraint())
+        s.set_node_properties(0, 'constraint', NodeConstraint())
+        s.set_node_properties(1, 'constraint',
+                              NodeConstraint(constraint=np.array([[0, 0, 1]])))
+        s.set_node_properties(2, 'constraint', NodeConstraint(
+            displacement=(s.nodes[:, 2] - s.nodes[:, 0]).reshape((3, 1))))
+
+        r = np.zeros((3, 6))
+        r[:, :3] = fz
 
         reactions = s.equilibrium(f)
+        np.testing.assert_allclose(reactions, r, atol=1e-6)
 
 
 if __name__ == '__main__':

@@ -23,7 +23,7 @@ class Plotter:
 
     @staticmethod
     def unit_cylinder(n: int = 10, radius: float = 1, height: float = 1) \
-            -> tuple[npt.NDArray, npt.NDArray, npt.NDArray]:
+            -> Tuple[npt.NDArray, npt.NDArray, npt.NDArray]:
         """
         Return xyz grid points for solid cylinder centered at the origin
 
@@ -43,7 +43,7 @@ class Plotter:
     def unit_truncated_cylinder(n: int = 10,
                                 base_radius: float = 1, top_radius: float = 1,
                                 height: float = 1) \
-            -> tuple[npt.NDArray, npt.NDArray, npt.NDArray]:
+            -> Tuple[npt.NDArray, npt.NDArray, npt.NDArray]:
         """
         Return xyz grid points for solid truncated cylinder centered at the origin
 
@@ -64,7 +64,7 @@ class Plotter:
 
     @staticmethod
     def unit_sphere(n: int = 10, radius: float = 1) \
-            -> tuple[npt.NDArray, npt.NDArray, npt.NDArray]:
+            -> Tuple[npt.NDArray, npt.NDArray, npt.NDArray]:
         """
         Return xyz grid points for solid sphere centered at the origin
 
