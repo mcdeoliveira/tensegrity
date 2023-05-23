@@ -22,8 +22,8 @@ Visualization is supported via `matplotlib <https://matplotlib.org>`_ and
 
    usage/quickstart
    usage/properties
-   usage/structure
    usage/transformations
+   usage/structure
    usage/examples
 
 .. toctree::

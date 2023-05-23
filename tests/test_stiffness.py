@@ -1,5 +1,5 @@
 import unittest
-from typing import Optional
+from typing import Optional, List
 
 import numpy as np
 
@@ -86,7 +86,7 @@ class TestStiffness(unittest.TestCase):
         self.assertTrue(np.linalg.norm(Ts.transpose() @ Ts - np.eye(2)) < 1e-6)
 
         nodes = np.array([[1, 0, 1], [0, 1, 1], [0, 0, 1]])
-        constraints: list[Optional[NodeConstraint]] = [None]*3
+        constraints: List[Optional[NodeConstraint]] = [None]*3
         constraints[0] = NodeConstraint(np.array(([[1, 1, 0]])))
         constraints[2] = NodeConstraint()
 
@@ -106,7 +106,7 @@ class TestStiffness(unittest.TestCase):
         self.assertTrue(np.linalg.norm(Ts.transpose() @ Ts - np.eye(5)) < 1e-6)
 
         nodes = np.array([[1, 0, 0, 0, 1], [0, 1, 0, 1, 1], [0, 0, 2, 1, 3]])
-        constraints: list[Optional[NodeConstraint]] = [None]*5
+        constraints: List[Optional[NodeConstraint]] = [None]*5
         constraints[0] = NodeConstraint(np.array(([[1, 1, 0]])))
         constraints[2] = NodeConstraint()
 
