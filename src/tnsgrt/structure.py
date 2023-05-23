@@ -1304,12 +1304,12 @@ pandas.DataFrame.loc.html>`_
                     jj += nocj
 
             A = np.hstack((Aeq, Ac))
-            m = 3 * number_of_nodes + number_of_reactions
+            # m = 3 * number_of_nodes + number_of_reactions
 
         else:
             number_of_reactions = 0
             A = Aeq
-            m = 3 * number_of_nodes
+            # m = 3 * number_of_nodes
 
         # average of the bars
         ee = np.zeros((1, number_of_members + number_of_reactions))
@@ -1365,7 +1365,7 @@ pandas.DataFrame.loc.html>`_
             xlo[strings] = 0
 
         # cost function
-        n = number_of_members + number_of_reactions
+        # n = number_of_members + number_of_reactions
         c = np.hstack((np.ones((number_of_members,)), np.zeros((number_of_reactions,))))
 
         # solve lp

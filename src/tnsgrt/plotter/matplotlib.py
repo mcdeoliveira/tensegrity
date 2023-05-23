@@ -179,9 +179,11 @@ def plot_arrows(ax: plt.Axes,
     if plot_3d_arrows:
         # plot arrows
         for org, dirc in zip(list(map(np.ravel,
-                                      np.split(origin, origin.shape[1], axis=1))),
+                                      np.split(origin, origin.shape[1],
+                                               axis=1))),
                              list(map(np.ravel,
-                                      np.split(direction, direction.shape[1], axis=1)))):
+                                      np.split(direction, direction.shape[1],
+                                               axis=1)))):
             length = np.linalg.norm(dirc)
             if length > 0:
                 # plot line
